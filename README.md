@@ -41,7 +41,7 @@ A powerful, interactive Business Intelligence dashboard built with Streamlit tha
 ### Setup
 ```bash
 # Clone the repository
-git clone https://github.com/goergefotopoulos/insightstream
+git clone https://github.com/FotopoulosGeorge/insightstream-bi
 cd insightstream
 
 # Create virtual environment (recommended)
