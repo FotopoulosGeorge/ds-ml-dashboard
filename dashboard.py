@@ -69,63 +69,174 @@ if st.session_state.datasets:
 # Data joining section
 if len(st.session_state.datasets) > 1:
     st.header("🔗 Data Joining")
-    
-    join_col1, join_col2, join_col3 = st.columns(3)
-    
-    with join_col1:
-        dataset_names = list(st.session_state.datasets.keys())
-        left_dataset = st.selectbox("Left Dataset:", dataset_names, key="left_ds")
+    try: 
+        join_col1, join_col2, join_col3 = st.columns(3)
         
-    with join_col2:
-        right_dataset = st.selectbox(
-            "Right Dataset:", 
-            [name for name in dataset_names if name != left_dataset],
-            key="right_ds"
-        )
-        
-    with join_col3:
-        join_type = st.selectbox(
-            "Join Type:",
-            ["inner", "left", "right", "outer"],
-            key="join_type"
-        )
-    
-    # Select join keys
-    if left_dataset and right_dataset:
-        left_df = st.session_state.datasets[left_dataset]
-        right_df = st.session_state.datasets[right_dataset]
-        
-        join_key_col1, join_key_col2 = st.columns(2)
-        
-        with join_key_col1:
-            left_key = st.selectbox(
-                f"Join key from {left_dataset}:",
-                left_df.columns.tolist(),
-                key="left_key"
+        with join_col1:
+            dataset_names = list(st.session_state.datasets.keys())
+            left_dataset = st.selectbox("Left Dataset:", dataset_names, key="left_ds")
+            
+        with join_col2:
+            right_dataset = st.selectbox(
+                "Right Dataset:", 
+                [name for name in dataset_names if name != left_dataset],
+                key="right_ds"
             )
             
-        with join_key_col2:
-            right_key = st.selectbox(
-                f"Join key from {right_dataset}:",
-                right_df.columns.tolist(),
-                key="right_key"
+        with join_col3:
+            join_type = st.selectbox(
+                "Join Type:",
+                ["inner", "left", "right", "outer"],
+                key="join_type"
             )
         
-        # Perform join
-        if st.button("Join Datasets", type="primary"):
-            try:
-                joined_df = pd.merge(
-                    left_df, 
-                    right_df, 
-                    left_on=left_key, 
-                    right_on=right_key, 
-                    how=join_type,
-                    suffixes=('_left', '_right')
+        # Select join keys
+        if left_dataset and right_dataset:
+            left_df = st.session_state.datasets[left_dataset]
+            right_df = st.session_state.datasets[right_dataset]
+            
+            join_key_col1, join_key_col2 = st.columns(2)
+            
+            with join_key_col1:
+                left_key = st.selectbox(
+                    f"Join key from {left_dataset}:",
+                    left_df.columns.tolist(),
+                    key="left_key"
                 )
-                st.session_state.joined_data = joined_df
-                st.success(f"Successfully joined datasets! Result: {len(joined_df)} rows, {len(joined_df.columns)} columns")
-            except Exception as e:
-                st.error(f"Join failed: {str(e)}")
+                
+            with join_key_col2:
+                right_key = st.selectbox(
+                    f"Join key from {right_dataset}:",
+                    right_df.columns.tolist(),
+                    key="right_key"
+                )
+
+            # Data type compatibility check
+            st.subheader("🔍 Join Compatibility Check")
+            
+            left_dtype = str(left_df[left_key].dtype)
+            right_dtype = str(right_df[right_key].dtype)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.write(f"**{left_dataset}[{left_key}]**")
+                st.write(f"Type: `{left_dtype}`")
+                st.write(f"Sample: {left_df[left_key].iloc[0]}")
+            
+            with col2:
+                st.write("**Compatibility**")
+                if left_dtype == right_dtype:
+                    st.success("✅ Compatible")
+                    compatibility = True
+                else:
+                    st.warning("⚠️ Type mismatch")
+                    compatibility = False
+            
+            with col3:
+                st.write(f"**{right_dataset}[{right_key}]**")
+                st.write(f"Type: `{right_dtype}`")
+                st.write(f"Sample: {right_df[right_key].iloc[0]}")
+
+            # Auto-fix option for type mismatches
+            auto_fix = False
+            if not compatibility:
+                auto_fix = st.checkbox(
+                    "🔧 Auto-fix data types", 
+                    help="Automatically convert data types to enable joining"
+                )
+
+            # Preview join results
+            if st.button("👁️ Preview Join", help="See first 5 rows of join result"):
+                try:
+                    # Prepare data for joining
+                    left_prep = left_df.copy()
+                    right_prep = right_df.copy()
+                    
+                    # Auto-fix data types if requested
+                    if auto_fix and not compatibility:
+                        try:
+                            # Try to convert to common type
+                            if 'object' in [left_dtype, right_dtype]:
+                                # Convert both to string
+                                left_prep[left_key] = left_prep[left_key].astype(str)
+                                right_prep[right_key] = right_prep[right_key].astype(str)
+                                st.info("🔧 Converted both columns to string type")
+                            elif 'int' in left_dtype and 'float' in right_dtype:
+                                # Convert int to float
+                                left_prep[left_key] = left_prep[left_key].astype(float)
+                                st.info("🔧 Converted integer to float")
+                            elif 'float' in left_dtype and 'int' in right_dtype:
+                                # Convert int to float
+                                right_prep[right_key] = right_prep[right_key].astype(float)
+                                st.info("🔧 Converted integer to float")
+                        except Exception as conv_error:
+                            st.error(f"Auto-fix failed: {conv_error}")
+                            left_prep, right_prep = left_df.copy(), right_df.copy()
+                    
+                    # Perform preview join
+                    preview_join = pd.merge(
+                        left_prep.head(100),  # Limit for preview
+                        right_prep.head(100),
+                        left_on=left_key,
+                        right_on=right_key,
+                        how=join_type,
+                        suffixes=('_left', '_right')
+                    )
+                    
+                    st.write("**Join Preview (first 5 rows):**")
+                    st.dataframe(preview_join.head(), use_container_width=True)
+                    
+                    # Join statistics
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Preview Rows", len(preview_join))
+                    with col2:
+                        st.metric("Total Columns", len(preview_join.columns))
+                    with col3:
+                        matching_keys = len(set(left_prep[left_key]) & set(right_prep[right_key]))
+                        st.metric("Matching Keys", matching_keys)
+                    
+                except Exception as e:
+                    st.error(f"Preview failed: {str(e)}")
+                    st.info("💡 Try enabling auto-fix or check your join keys")
+
+            # Perform the join
+            joined_df = pd.merge(
+                left_prep, 
+                right_prep, 
+                left_on=left_key, 
+                right_on=right_key, 
+                how=join_type,
+                suffixes=('_left', '_right')
+            )
+            
+            st.session_state.joined_data = joined_df
+            
+            # Success message with details
+            st.success(f"✅ Successfully joined datasets!")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Result Rows", len(joined_df))
+            with col2:
+                st.metric("Result Columns", len(joined_df.columns))
+            with col3:
+                data_loss = len(left_df) + len(right_df) - len(joined_df)
+                st.metric("Data Loss", data_loss)
+            with col4:
+                efficiency = len(joined_df) / max(len(left_df), len(right_df)) * 100
+                st.metric("Join Efficiency", f"{efficiency:.1f}%")
+        
+    except Exception as e:
+        st.error(f"❌ Join failed: {str(e)}")
+        
+        # Helpful error messages
+        if "can only concatenate str" in str(e):
+            st.info("💡 **Solution**: Enable 'Auto-fix data types' to convert mismatched types")
+        elif "incompatible dtype" in str(e):
+            st.info("💡 **Solution**: Check that join columns contain compatible data")
+        elif "not in index" in str(e):
+            st.info("💡 **Solution**: Verify that the selected columns exist in both datasets")
 
 # Select working dataset
 st.header("📊 Data Analysis")
@@ -163,7 +274,7 @@ if df is not None:
     
     # Show data preview
     st.subheader("Data Preview")
-    st.dataframe(df.head(10), use_container_width=True)
+    st.dataframe(df.head(5), use_container_width=True)
     
     # Advanced filtering section
     st.header("🔍 Advanced Filtering")
