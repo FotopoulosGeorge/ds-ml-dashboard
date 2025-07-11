@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 import re
 from datetime import datetime, date
+from feature_engineering import FeatureEngineer
 
 # Page configuration
 st.set_page_config(
@@ -409,6 +410,69 @@ date.dt.year == 2023
             # Update working dataframe
             df = filtered_df
         
+        # FEATURE ENGINEERING (collapsible)
+        with st.expander("🔧 **Feature Engineering** - Transform Your Data for ML", expanded=False):
+            st.markdown("*Create new features and transform existing ones to improve model performance*")
+            
+            # Initialize FE class
+            if 'fe_handler' not in st.session_state:
+                st.session_state.fe_handler = FeatureEngineer(df)
+            
+            fe_handler = st.session_state.fe_handler
+
+            column_info = fe_handler.get_column_info()
+            numeric_cols = column_info['numeric']
+            categorical_cols = column_info['categorical'] 
+            date_cols = column_info['datetime']
+            
+            # UI logic stays here, but calls methods from FeatureEngineer
+            fe_type = st.selectbox("Select technique:", 
+                [    
+                    "🔢 Numerical Transformations",
+                    "📝 Text Feature Extraction", 
+                    "📅 Date/Time Features",
+                    "🏷️ Categorical Encoding",
+                    "⚡ Advanced Features",
+                    "📊 Statistical Features"
+                ]
+            )
+            
+            if fe_type == "🔢 Numerical Transformations":
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    selected_col = st.selectbox("Select column:", numeric_cols)
+                    transform_type = st.selectbox("Transformation:", 
+                                                fe_handler.get_available_numerical_transforms())
+                
+                with col2:
+                    # Show transform info
+                    info = fe_handler.get_transform_info(transform_type)
+                    st.info(f"**{transform_type}:** {info['description']}")
+                    
+                    # Handle special parameters
+                    kwargs = {}
+                    if transform_type == "Quantile Binning":
+                        kwargs['n_bins'] = st.slider("Number of bins:", 2, 20, 5)
+                    
+                    new_name = st.text_input("New column name:", 
+                                            value=f"{selected_col}_{transform_type.lower().replace(' ', '_')}")
+                
+                if st.button("🔧 Apply Transformation"):
+                    try:
+                        created_col = fe_handler.apply_numerical_transform(
+                            selected_col, transform_type, new_name, **kwargs
+                        )
+                        st.success(f"✅ Created feature: {created_col}")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(f"❌ {str(e)}")
+            
+            # Repeat for other FE types...
+            
+            # Update working dataframe
+            df = fe_handler.df
+
         # VISUALIZATIONS (Always prominent and expanded)
         st.header("📈 **Data Visualization**")
         st.markdown("*Create interactive charts and explore your data visually*")
