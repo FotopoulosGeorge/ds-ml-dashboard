@@ -208,25 +208,38 @@ if st.session_state.datasets:
             df = None
 
     if df is not None:
+        if 'working_df' not in st.session_state:
+            st.session_state.working_df = df.copy()
+            st.session_state.base_df = df.copy()  # Keep original for reference
+    
+        # Check if we need to reset working data (new dataset selected)
+        if len(st.session_state.base_df) != len(df) or list(st.session_state.base_df.columns) != list(df.columns):
+            st.session_state.working_df = df.copy()
+            st.session_state.base_df = df.copy()
+            st.session_state.active_filters = []  # Clear filters when switching datasets
+    
+        # Use working dataset for all operations
+        working_df = st.session_state.working_df
+        base_df = st.session_state.base_df
         
         # Quick metrics (always visible)
         metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
 
         is_filtered = len(st.session_state.get('active_filters', [])) > 0
-        original_count = len(df) if not is_filtered else st.session_state.active_filters[0]['original_count']
+        original_count = len(working_df) if not is_filtered else st.session_state.active_filters[0]['original_count']
         
         with metric_col1:
             if is_filtered:
-                st.metric("📊 **Total Rows**", f"{len(df):,}", delta=f"{len(df) - original_count:,} filtered")
+                st.metric("📊 **Total Rows**", f"{len(working_df):,}", delta=f"{len(working_df) - original_count:,} filtered")
             else:
-                st.metric("📊 **Total Rows**", f"{len(df):,}")
+                st.metric("📊 **Total Rows**", f"{len(working_df):,}")
         with metric_col2:
-            st.metric("📋 **Columns**", len(df.columns))
+            st.metric("📋 **Columns**", len(working_df.columns))
         with metric_col3:
-            numeric_count = len(df.select_dtypes(include=[np.number]).columns)
+            numeric_count = len(working_df.select_dtypes(include=[np.number]).columns)
             st.metric("🔢 **Numeric**", numeric_count)
         with metric_col4:
-            missing_count = df.isnull().sum().sum()
+            missing_count = working_df.isnull().sum().sum()
             st.metric("❓ **Missing**", f"{missing_count:,}")
         
         if st.session_state.get('active_filters', []):
@@ -238,17 +251,18 @@ if st.session_state.datasets:
             filter_col1, filter_col2 = st.columns([4, 1])
             
             with filter_col1:
-                reduction_pct = ((filter_info['original_count'] - filter_info['count']) / filter_info['original_count'] * 100)
+                reduction_pct = ((len(base_df) - len(working_df)) / len(base_df) * 100)
                 
                 st.markdown(f"""
                 🔍 **Active Filter:** {filter_info['type']} • 
-                Showing **{filter_info['count']:,}** of **{filter_info['original_count']:,}** rows 
+                Showing **{len(working_df):,}** of **{len(base_df):,}** rows 
                 ({reduction_pct:.1f}% filtered)
                 """)
             
             with filter_col2:
                 if st.button("❌ Clear All Filters", key="clear_filters"):
                     st.session_state.active_filters = []
+                    st.session_state.working_df = st.session_state.base_df.copy()
                     st.rerun()
 
         st.markdown("---")
@@ -264,15 +278,15 @@ if st.session_state.datasets:
             with preview_col2:
                 preview_rows = st.selectbox("Rows to show:", [5, 10, 20, 50], index=1, key="preview_rows")
             
-            st.dataframe(df.head(preview_rows), use_container_width=True)
+            st.dataframe(working_df.head(preview_rows), use_container_width=True)
             
             # Column info
             col_info = pd.DataFrame({
-                'Column': df.columns,
-                'Type': [str(dtype) for dtype in df.dtypes],
-                'Non-Null': df.count(),
-                'Null Count': df.isnull().sum(),
-                'Unique Values': [df[col].nunique() for col in df.columns]
+                'Column': working_df.columns,
+                'Type': [str(dtype) for dtype in working_df.dtypes],
+                'Non-Null': working_df.count(),
+                'Null Count': working_df.isnull().sum(),
+                'Unique Values': [working_df[col].nunique() for col in working_df.columns]
             })
             
             with st.expander("📊 Column Details"):
@@ -285,10 +299,10 @@ if st.session_state.datasets:
             # Data quality metrics
             quality_col1, quality_col2, quality_col3, quality_col4 = st.columns(4)
             
-            duplicates = df.duplicated().sum()
-            missing_cells = df.isnull().sum().sum()
-            empty_rows = df.isnull().all(axis=1).sum()
-            
+            duplicates = working_df.duplicated().sum()
+            missing_cells = working_df.isnull().sum().sum()
+            empty_rows = working_df.isnull().all(axis=1).sum()
+
             with quality_col1:
                 st.metric("🔄 Duplicates", duplicates, delta=None, delta_color="inverse")
             with quality_col2:
@@ -306,31 +320,31 @@ if st.session_state.datasets:
                 
                 with clean_col1:
                     if duplicates > 0 and st.button(f"Remove {duplicates} Duplicates"):
-                        df = df.drop_duplicates()
+                        working_df = working_df.drop_duplicates()
                         st.success("Duplicates removed!")
                         st.rerun()
                 
                 with clean_col2:
                     if missing_cells > 0 and st.button("Smart Fill Missing"):
                         # Simple smart filling
-                        for col in df.columns:
-                            if df[col].dtype in ['int64', 'float64']:
-                                df[col] = df[col].fillna(df[col].median())
-                            elif df[col].dtype == 'object':
-                                mode_val = df[col].mode()
+                        for col in working_df.columns:
+                            if working_df[col].dtype in ['int64', 'float64']:
+                                working_df[col] = working_df[col].fillna(working_df[col].median())
+                            elif working_df[col].dtype == 'object':
+                                mode_val = working_df[col].mode()
                                 if len(mode_val) > 0:
-                                    df[col] = df[col].fillna(mode_val[0])
+                                    working_df[col] = working_df[col].fillna(mode_val[0])
                         st.success("Missing values filled!")
                         st.rerun()
                 
                 with clean_col3:
                     if empty_rows > 0 and st.button(f"Remove {empty_rows} Empty Rows"):
-                        df = df.dropna(how='all')
+                        working_df = working_df.dropna(how='all')
                         st.success("Empty rows removed!")
                         st.rerun()
         
         # Advanced filtering (collapsible)
-        with st.expander("🔍 **Advanced Filtering** - Focus Your Analysis", expanded=False):
+        with st.expander("🔍 **Filtering** - Focus Your Analysis", expanded=False):
             st.markdown("*Filter data using simple controls or advanced queries*")
             
             if 'active_filters' not in st.session_state:
@@ -343,12 +357,12 @@ if st.session_state.datasets:
                 horizontal=True
             )
             
-            filtered_df = df.copy()
+            filtered_df = base_df.copy()
             
             if filter_type == "🎛️ Simple Filters":
                 filter_columns = st.multiselect(
                     "Select columns to filter:",
-                    options=df.columns.tolist(),
+                    options=base_df.columns.tolist(),
                     help="Choose columns to create filters for"
                 )
                 
@@ -357,10 +371,10 @@ if st.session_state.datasets:
                     
                     for i, col in enumerate(filter_columns):
                         with filter_cols[i % 2]:
-                            st.write(f"**{col}** *({df[col].dtype})*")
+                            st.write(f"**{col}** *({base_df[col].dtype})*")
                             
-                            if df[col].dtype in ['object', 'category']:
-                                unique_values = df[col].unique()
+                            if base_df[col].dtype in ['object', 'category']:
+                                unique_values = base_df[col].unique()
                                 if len(unique_values) <= 50:  # Dropdown for reasonable number of values
                                     selected_values = st.multiselect(
                                         "Select values:",
@@ -374,8 +388,8 @@ if st.session_state.datasets:
                                     if search_term:
                                         filtered_df = filtered_df[filtered_df[col].str.contains(search_term, case=False, na=False)]
                             
-                            elif df[col].dtype in ['int64', 'float64']:
-                                min_val, max_val = float(df[col].min()), float(df[col].max())
+                            elif base_df[col].dtype in ['int64', 'float64']:
+                                min_val, max_val = float(base_df[col].min()), float(base_df[col].max())
                                 selected_range = st.slider(
                                     "Value range:",
                                     min_value=min_val,
@@ -388,10 +402,10 @@ if st.session_state.datasets:
                                     (filtered_df[col] <= selected_range[1])
                                 ]
                             
-                            elif 'datetime' in str(df[col].dtype):
+                            elif 'datetime' in str(base_df[col].dtype):
                                 date_range = st.date_input(
                                     "Date range:",
-                                    value=(df[col].min().date(), df[col].max().date()),
+                                    value=(base_df[col].min().date(), base_df[col].max().date()),
                                     key=f"date_{col}"
                                 )
                                 if len(date_range) == 2:
@@ -402,17 +416,19 @@ if st.session_state.datasets:
                                     ]
             
                 # Update active filters based on what was applied
-                if len(filtered_df) != len(df):
+                if len(filtered_df) != len(base_df):
                     # Store filter info - you'll populate this based on your filter type
                     filter_info = {
                         'type': filter_type,  # "🎛️ Simple Filters" or "⚡ Query Builder"
                         'count': len(filtered_df),
-                        'original_count': len(df),
+                        'original_count': len(base_df),
                         'details': []  # Will hold specific filter descriptions
                     }
                     st.session_state.active_filters = [filter_info]  # Replace with current
+                    st.session_state.working_df = filtered_df.copy()
                 else:
                     st.session_state.active_filters = []  # No filters active
+                    st.session_state.working_df = base_df.copy()
 
             else:  # Query Builder
                 query_text = st.text_area(
@@ -424,50 +440,52 @@ if st.session_state.datasets:
                 
                 if query_text:
                     try:
-                        filtered_df = df.query(query_text)
+                        filtered_df = base_df.query(query_text)
                         st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
 
-                        if len(filtered_df) != len(df):
+                        if len(filtered_df) != len(base_df):
                             filter_info = {
                                 'type': filter_type,
                                 'count': len(filtered_df),
-                                'original_count': len(df),
+                                'original_count': len(base_df),
                                 'details': [f"Query: {query_text[:50]}{'...' if len(query_text) > 50 else ''}"]
                             }
                             st.session_state.active_filters = [filter_info]
+                            st.session_state.working_df = filtered_df.copy()
                         else:
                             st.session_state.active_filters = []
+                            st.session_state.working_df = base_df.copy()
 
                     except Exception as e:
                         st.error(f"Query error: {str(e)}")
-                        filtered_df = df.copy()
+                        filtered_df = base_df.copy()
                         st.session_state.active_filters = []
                 
                 # Query examples
                 with st.expander("💡 Query Examples"):
                     st.code("""
-# Numeric conditions
-sales > 1000 and quantity >= 5
-price.between(10, 100)
+                            # Numeric conditions
+                            sales > 1000 and quantity >= 5
+                            price.between(10, 100)
 
-# Text patterns  
-category.str.contains('electronics', case=False)
-name.str.startswith('A')
+                            # Text patterns  
+                            category.str.contains('electronics', case=False)
+                            name.str.startswith('A')
 
-# Date conditions
-date >= '2023-01-01'
-date.dt.year == 2023
+                            # Date conditions
+                            date >= '2023-01-01'
+                            date.dt.year == 2023
 
-# Combined conditions
-(revenue > 10000) or (region == 'North')
-                    """)
+                            # Combined conditions
+                            (revenue > 10000) or (region == 'North')
+                                                """)
             
             # Show filter results
-            if len(filtered_df) != len(df):
-                st.info(f"🔍 **Filtered:** {len(filtered_df):,} rows ({(len(filtered_df)/len(df)*100):.1f}% of data)")
+            if len(filtered_df) != len(base_df):
+                st.info(f"🔍 **Filtered:** {len(working_df):,} rows ({(len(working_df)/len(df)*100):.1f}% of data)")
             
             # Update working dataframe
-            df = filtered_df
+            working_df = filtered_df
         
         # FEATURE ENGINEERING (collapsible)
         with st.expander("🔧 **Feature Engineering** - Transform Your Data for ML", expanded=False):
@@ -475,7 +493,7 @@ date.dt.year == 2023
             
             # Initialize FE class
             if 'fe_handler' not in st.session_state:
-                st.session_state.fe_handler = FeatureEngineer(df)
+                st.session_state.fe_handler = FeatureEngineer(working_df)
             
             fe_handler = st.session_state.fe_handler
 
@@ -530,7 +548,7 @@ date.dt.year == 2023
             # Repeat for other FE types...
             
             # Update working dataframe
-            df = fe_handler.df
+            working_df = fe_handler.df
 
         # VISUALIZATIONS (Always prominent and expanded)
         st.header("📈 **Data Visualization**")
@@ -546,11 +564,11 @@ date.dt.year == 2023
             )
         
         # Get column types for smart defaults
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
-        all_cols = df.columns.tolist()
-        
+        numeric_cols = working_df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = working_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        date_cols = working_df.select_dtypes(include=['datetime64']).columns.tolist()
+        all_cols = working_df.columns.tolist()
+
         # Chart configuration based on type
         fig = None
         
@@ -655,7 +673,7 @@ date.dt.year == 2023
                 )
                 
                 if summary_type == "📈 Descriptive Statistics":
-                    st.dataframe(df[numeric_cols].describe(), use_container_width=True)
+                    st.dataframe(working_df[numeric_cols].describe(), use_container_width=True)
                 
                 elif summary_type == "👥 Group Analysis" and categorical_cols:
                     group_col1, group_col2 = st.columns(2)
@@ -665,17 +683,17 @@ date.dt.year == 2023
                         metric_col = st.selectbox("Analyze:", numeric_cols)
                     
                     if group_by_col and metric_col:
-                        grouped_stats = df.groupby(group_by_col)[metric_col].agg([
+                        grouped_stats = working_df.groupby(group_by_col)[metric_col].agg([
                             'count', 'mean', 'median', 'std', 'min', 'max'
                         ]).round(2)
                         st.dataframe(grouped_stats, use_container_width=True)
                 
                 elif summary_type == "❓ Missing Data Report":
                     missing_data = pd.DataFrame({
-                        'Column': df.columns,
-                        'Missing Count': df.isnull().sum(),
-                        'Missing %': (df.isnull().sum() / len(df) * 100).round(2),
-                        'Data Type': df.dtypes
+                        'Column': working_df.columns,
+                        'Missing Count': working_df.isnull().sum(),
+                        'Missing %': (working_df.isnull().sum() / len(working_df) * 100).round(2),
+                        'Data Type': working_df.dtypes
                     })
                     missing_data = missing_data[missing_data['Missing Count'] > 0]
                     
@@ -689,7 +707,7 @@ date.dt.year == 2023
             export_col1, export_col2, export_col3 = st.columns(3)
             
             with export_col1:
-                csv = df.to_csv(index=False)
+                csv = working_df.to_csv(index=False)
                 st.download_button(
                     label="📥 **Download Filtered Data**",
                     data=csv,
@@ -700,7 +718,7 @@ date.dt.year == 2023
             
             with export_col2:
                 if numeric_cols:
-                    summary_csv = df[numeric_cols].describe().to_csv()
+                    summary_csv = working_df[numeric_cols].describe().to_csv()
                     st.download_button(
                         label="📊 **Download Statistics**",
                         data=summary_csv,
@@ -713,9 +731,9 @@ date.dt.year == 2023
                 # Export info
                 export_info = pd.DataFrame([{
                     'Dataset': dataset_name,
-                    'Original Rows': len(df),
+                    'Original Rows': len(working_df),
                     'Export Date': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                    'Columns': len(df.columns)
+                    'Columns': len(working_df.columns)
                 }])
                 info_csv = export_info.to_csv(index=False)
                 st.download_button(
