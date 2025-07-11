@@ -7,6 +7,7 @@ import numpy as np
 import re
 from datetime import datetime, date
 from feature_engineering import FeatureEngineer
+from data_filter import DataFilter
 
 # Page configuration
 st.set_page_config(
@@ -68,8 +69,44 @@ if st.session_state.datasets:
                 st.rerun()
 
 # Main content area
+
+def get_current_data():
+    """Always returns the most current filtered data"""
+    if 'working_df' in st.session_state and st.session_state.working_df is not None:
+        return st.session_state.working_df.copy()
+    elif 'base_df' in st.session_state and st.session_state.base_df is not None:
+        return st.session_state.base_df.copy()
+    else:
+        return df.copy()  # Fallback to original
+
+def get_column_lists():
+    """Returns column lists from current data"""
+    current_df = get_current_data()
+    return {
+        'numeric': current_df.select_dtypes(include=[np.number]).columns.tolist(),
+        'categorical': current_df.select_dtypes(include=['object', 'category']).columns.tolist(),
+        'datetime': current_df.select_dtypes(include=['datetime64']).columns.tolist(),
+        'all': current_df.columns.tolist()
+    }
+
 if st.session_state.datasets:
+    if df is not None:
+    # Initialize session state variables if they don't exist
+        if 'base_df' not in st.session_state:
+            st.session_state.base_df = df.copy()
+        if 'working_df' not in st.session_state:
+            st.session_state.working_df = df.copy()
     
+        # Check if dataset changed (different shape or columns)
+        if (st.session_state.base_df is None or 
+            len(st.session_state.base_df) != len(df) or 
+            list(st.session_state.base_df.columns) != list(df.columns)):
+            
+            # Reset session state for new dataset
+            st.session_state.base_df = df.copy()
+            st.session_state.working_df = df.copy()
+            st.session_state.active_filters = []
+            
     # Data joining section (collapsible if multiple datasets)
     if len(st.session_state.datasets) > 1:
         with st.expander("🔗 **Data Joining** - Combine Multiple Datasets", expanded=False):
@@ -208,42 +245,40 @@ if st.session_state.datasets:
             df = None
 
     if df is not None:
-        if 'working_df' not in st.session_state:
-            st.session_state.working_df = df.copy()
-            st.session_state.base_df = df.copy()  # Keep original for reference
+        if 'data_filter' not in st.session_state:
+            st.session_state.data_filter = DataFilter(df)
     
         # Check if we need to reset working data (new dataset selected)
         if len(st.session_state.base_df) != len(df) or list(st.session_state.base_df.columns) != list(df.columns):
-            st.session_state.working_df = df.copy()
-            st.session_state.base_df = df.copy()
-            st.session_state.active_filters = []  # Clear filters when switching datasets
-    
-        # Use working dataset for all operations
-        working_df = st.session_state.working_df
-        base_df = st.session_state.base_df
+            st.session_state.data_filter = DataFilter(df)
         
         # Quick metrics (always visible)
+        filter_info = st.session_state.data_filter.get_filter_info()
+        working_df = st.session_state.data_filter.get_filtered_data()
         metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
-
-        is_filtered = len(st.session_state.get('active_filters', [])) > 0
-        original_count = len(working_df) if not is_filtered else st.session_state.active_filters[0]['original_count']
         
         with metric_col1:
-            if is_filtered:
-                st.metric("📊 **Total Rows**", f"{len(working_df):,}", delta=f"{len(working_df) - original_count:,} filtered")
+            if filter_info['active']:
+                delta = f"{filter_info['filtered_count'] - filter_info['original_count']:,} filtered"
+                st.metric("📊 **Total Rows**", f"{filter_info['filtered_count']:,}", delta=delta)
             else:
                 st.metric("📊 **Total Rows**", f"{len(working_df):,}")
+
         with metric_col2:
             st.metric("📋 **Columns**", len(working_df.columns))
+
         with metric_col3:
             numeric_count = len(working_df.select_dtypes(include=[np.number]).columns)
             st.metric("🔢 **Numeric**", numeric_count)
+
         with metric_col4:
             missing_count = working_df.isnull().sum().sum()
             st.metric("❓ **Missing**", f"{missing_count:,}")
         
-        if st.session_state.get('active_filters', []):
-            filter_info = st.session_state.active_filters[0]
+        if st.session_state.data_filter.render_filter_summary():
+            # User clicked clear filters
+            st.session_state.data_filter.clear_filters()
+            st.rerun()
             
             st.markdown("---")
             
@@ -343,149 +378,26 @@ if st.session_state.datasets:
                         st.success("Empty rows removed!")
                         st.rerun()
         
+
+
         # Advanced filtering (collapsible)
         with st.expander("🔍 **Filtering** - Focus Your Analysis", expanded=False):
-            st.markdown("*Filter data using simple controls or advanced queries*")
-            
-            if 'active_filters' not in st.session_state:
-                st.session_state.active_filters = []
+            # This returns the filtered data
+            filtered_data, filters_applied = st.session_state.data_filter.render_filter_ui()
+        
+        # Get current working data (this always works!)
+        working_df = st.session_state.data_filter.get_filtered_data()
+        
+        # Update column lists for visualizations
+        numeric_cols = working_df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = working_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        date_cols = working_df.select_dtypes(include=['datetime64']).columns.tolist()
+        all_cols = working_df.columns.tolist()
+        
+        # Debug info (remove after testing)
+        st.write(f"🔍 **Current Data**: {len(working_df)} rows ready for visualization")
 
-            # Filter type selection
-            filter_type = st.radio(
-                "Choose filter mode:",
-                ["🎛️ Simple Filters", "⚡ Query Builder"],
-                horizontal=True
-            )
-            
-            filtered_df = base_df.copy()
-            
-            if filter_type == "🎛️ Simple Filters":
-                filter_columns = st.multiselect(
-                    "Select columns to filter:",
-                    options=base_df.columns.tolist(),
-                    help="Choose columns to create filters for"
-                )
-                
-                if filter_columns:
-                    filter_cols = st.columns(min(2, len(filter_columns)))
-                    
-                    for i, col in enumerate(filter_columns):
-                        with filter_cols[i % 2]:
-                            st.write(f"**{col}** *({base_df[col].dtype})*")
-                            
-                            if base_df[col].dtype in ['object', 'category']:
-                                unique_values = base_df[col].unique()
-                                if len(unique_values) <= 50:  # Dropdown for reasonable number of values
-                                    selected_values = st.multiselect(
-                                        "Select values:",
-                                        options=unique_values,
-                                        default=unique_values,
-                                        key=f"filter_{col}"
-                                    )
-                                    filtered_df = filtered_df[filtered_df[col].isin(selected_values)]
-                                else:  # Text input for many values
-                                    search_term = st.text_input(f"Search in {col}:", key=f"search_{col}")
-                                    if search_term:
-                                        filtered_df = filtered_df[filtered_df[col].str.contains(search_term, case=False, na=False)]
-                            
-                            elif base_df[col].dtype in ['int64', 'float64']:
-                                min_val, max_val = float(base_df[col].min()), float(base_df[col].max())
-                                selected_range = st.slider(
-                                    "Value range:",
-                                    min_value=min_val,
-                                    max_value=max_val,
-                                    value=(min_val, max_val),
-                                    key=f"range_{col}"
-                                )
-                                filtered_df = filtered_df[
-                                    (filtered_df[col] >= selected_range[0]) & 
-                                    (filtered_df[col] <= selected_range[1])
-                                ]
-                            
-                            elif 'datetime' in str(base_df[col].dtype):
-                                date_range = st.date_input(
-                                    "Date range:",
-                                    value=(base_df[col].min().date(), base_df[col].max().date()),
-                                    key=f"date_{col}"
-                                )
-                                if len(date_range) == 2:
-                                    start_date, end_date = date_range
-                                    filtered_df = filtered_df[
-                                        (filtered_df[col].dt.date >= start_date) & 
-                                        (filtered_df[col].dt.date <= end_date)
-                                    ]
-            
-                # Update active filters based on what was applied
-                if len(filtered_df) != len(base_df):
-                    # Store filter info - you'll populate this based on your filter type
-                    filter_info = {
-                        'type': filter_type,  # "🎛️ Simple Filters" or "⚡ Query Builder"
-                        'count': len(filtered_df),
-                        'original_count': len(base_df),
-                        'details': []  # Will hold specific filter descriptions
-                    }
-                    st.session_state.active_filters = [filter_info]  # Replace with current
-                    st.session_state.working_df = filtered_df.copy()
-                else:
-                    st.session_state.active_filters = []  # No filters active
-                    st.session_state.working_df = base_df.copy()
-
-            else:  # Query Builder
-                query_text = st.text_area(
-                    "Write a pandas query:",
-                    help="Example: sales > 1000 and category.str.contains('tech')",
-                    placeholder="column_name > 100 and other_column == 'value'",
-                    height=100
-                )
-                
-                if query_text:
-                    try:
-                        filtered_df = base_df.query(query_text)
-                        st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
-
-                        if len(filtered_df) != len(base_df):
-                            filter_info = {
-                                'type': filter_type,
-                                'count': len(filtered_df),
-                                'original_count': len(base_df),
-                                'details': [f"Query: {query_text[:50]}{'...' if len(query_text) > 50 else ''}"]
-                            }
-                            st.session_state.active_filters = [filter_info]
-                            st.session_state.working_df = filtered_df.copy()
-                        else:
-                            st.session_state.active_filters = []
-                            st.session_state.working_df = base_df.copy()
-
-                    except Exception as e:
-                        st.error(f"Query error: {str(e)}")
-                        filtered_df = base_df.copy()
-                        st.session_state.active_filters = []
-                
-                # Query examples
-                with st.expander("💡 Query Examples"):
-                    st.code("""
-                            # Numeric conditions
-                            sales > 1000 and quantity >= 5
-                            price.between(10, 100)
-
-                            # Text patterns  
-                            category.str.contains('electronics', case=False)
-                            name.str.startswith('A')
-
-                            # Date conditions
-                            date >= '2023-01-01'
-                            date.dt.year == 2023
-
-                            # Combined conditions
-                            (revenue > 10000) or (region == 'North')
-                                                """)
-            
-            # Show filter results
-            if len(filtered_df) != len(base_df):
-                st.info(f"🔍 **Filtered:** {len(working_df):,} rows ({(len(working_df)/len(df)*100):.1f}% of data)")
-            
-            # Update working dataframe
-            working_df = filtered_df
+        st.markdown("---")
         
         # FEATURE ENGINEERING (collapsible)
         with st.expander("🔧 **Feature Engineering** - Transform Your Data for ML", expanded=False):
@@ -553,6 +465,11 @@ if st.session_state.datasets:
         # VISUALIZATIONS (Always prominent and expanded)
         st.header("📈 **Data Visualization**")
         st.markdown("*Create interactive charts and explore your data visually*")
+
+        current_data = get_current_data()
+        columns = get_column_lists()
+
+        st.write(f"🔍 **Chart Data**: {len(current_data)} rows")  # Debug info
         
         # Chart controls
         viz_col1, viz_col2, viz_col3 = st.columns(3)
@@ -579,7 +496,7 @@ if st.session_state.datasets:
                 y_axis = st.selectbox("**Y-axis:**", numeric_cols, key="bar_y")
             
             if x_axis and y_axis:
-                fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}")
+                fig = px.bar(current_data, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis} (n={len(current_data)})")
         
         elif chart_type == "📈 Line Chart":
             with viz_col2:
@@ -588,7 +505,7 @@ if st.session_state.datasets:
                 y_axis = st.selectbox("**Y-axis:**", numeric_cols, key="line_y")
             
             if x_axis and y_axis:
-                fig = px.line(df, x=x_axis, y=y_axis, title=f"{y_axis} over {x_axis}")
+                fig = px.line(working_df, x=x_axis, y=y_axis, title=f"{y_axis} over {x_axis}")
         
         elif chart_type == "🔍 Scatter Plot":
             with viz_col2:
@@ -608,7 +525,7 @@ if st.session_state.datasets:
                 size_col = None if size_by == "None" else size_by
                 
                 fig = px.scatter(
-                    df, x=x_axis, y=y_axis, 
+                    working_df, x=x_axis, y=y_axis, 
                     color=color_col, size=size_col,
                     title=f"{y_axis} vs {x_axis}",
                     hover_data=numeric_cols[:2]
@@ -621,7 +538,7 @@ if st.session_state.datasets:
                 bins = st.slider("**Bins:**", 10, 100, 30)
             
             if column:
-                fig = px.histogram(df, x=column, nbins=bins, title=f"Distribution of {column}")
+                fig = px.histogram(working_df, x=column, nbins=bins, title=f"Distribution of {column}")
         
         elif chart_type == "📦 Box Plot":
             with viz_col2:
@@ -631,11 +548,11 @@ if st.session_state.datasets:
             
             if y_axis:
                 x_col = None if x_axis == "None" else x_axis
-                fig = px.box(df, x=x_col, y=y_axis, title=f"Distribution of {y_axis}")
+                fig = px.box(working_df, x=x_col, y=y_axis, title=f"Distribution of {y_axis}")
         
         elif chart_type == "🔥 Heatmap":
             if len(numeric_cols) >= 2:
-                corr_matrix = df[numeric_cols].corr()
+                corr_matrix = working_df[numeric_cols].corr()
                 fig = px.imshow(
                     corr_matrix,
                     title="Correlation Heatmap",
@@ -655,7 +572,7 @@ if st.session_state.datasets:
                 
                 if date_col and value_col:
                     # Sort by date
-                    ts_df = df.sort_values(date_col)
+                    ts_df = working_df.sort_values(date_col)
                     fig = px.line(ts_df, x=date_col, y=value_col, title=f"{value_col} over time")
             else:
                 st.warning("⚠️ No date columns found for time series")
