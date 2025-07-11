@@ -1,17 +1,19 @@
+# dashboard.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import numpy as np
-import re
-from datetime import datetime, date
-from feature_engineering import FeatureEngineer
+from datetime import datetime
+
+# Import all our modules
 from data_filter import DataFilter
+from data_visualizer import DataVisualizer  
+from data_statistics import DataStatistics
+from data_exporter import DataExporter
+from data_preview import DataPreview
 
 # Page configuration
 st.set_page_config(
-    page_title="InsightStream - Advanced BI Dashboard",
+    page_title="InsightStream - BI Dashboard",
     page_icon="📊",
     layout="wide"
 )
@@ -19,12 +21,10 @@ st.set_page_config(
 # Initialize session state
 if 'datasets' not in st.session_state:
     st.session_state.datasets = {}
-if 'joined_data' not in st.session_state:
-    st.session_state.joined_data = None
 
 # Header
 st.title("📊 InsightStream")
-st.markdown("**Advanced Business Intelligence Dashboard** • Upload, Join, Filter, Visualize")
+st.markdown("** Business Intelligence Dashboard** • Upload, Filter, Analyze, Visualize")
 
 # Sidebar for file upload and controls
 st.sidebar.header("📁 Data Management")
@@ -69,604 +69,148 @@ if st.session_state.datasets:
                 st.rerun()
 
 # Main content area
-
-def get_current_data():
-    """Always returns the most current filtered data"""
-    if 'working_df' in st.session_state and st.session_state.working_df is not None:
-        return st.session_state.working_df.copy()
-    elif 'base_df' in st.session_state and st.session_state.base_df is not None:
-        return st.session_state.base_df.copy()
-    else:
-        return df.copy()  # Fallback to original
-
-def get_column_lists():
-    """Returns column lists from current data"""
-    current_df = get_current_data()
-    return {
-        'numeric': current_df.select_dtypes(include=[np.number]).columns.tolist(),
-        'categorical': current_df.select_dtypes(include=['object', 'category']).columns.tolist(),
-        'datetime': current_df.select_dtypes(include=['datetime64']).columns.tolist(),
-        'all': current_df.columns.tolist()
-    }
-
 if st.session_state.datasets:
-    if df is not None:
-    # Initialize session state variables if they don't exist
-        if 'base_df' not in st.session_state:
-            st.session_state.base_df = df.copy()
-        if 'working_df' not in st.session_state:
-            st.session_state.working_df = df.copy()
     
-        # Check if dataset changed (different shape or columns)
-        if (st.session_state.base_df is None or 
-            len(st.session_state.base_df) != len(df) or 
-            list(st.session_state.base_df.columns) != list(df.columns)):
-            
-            # Reset session state for new dataset
-            st.session_state.base_df = df.copy()
-            st.session_state.working_df = df.copy()
-            st.session_state.active_filters = []
-            
-    # Data joining section (collapsible if multiple datasets)
+    # Dataset selection
     if len(st.session_state.datasets) > 1:
-        with st.expander("🔗 **Data Joining** - Combine Multiple Datasets", expanded=False):
-            st.markdown("*Join two datasets based on common columns*")
-            
-            join_col1, join_col2, join_col3 = st.columns(3)
-            
-            with join_col1:
-                dataset_names = list(st.session_state.datasets.keys())
-                left_dataset = st.selectbox("Left Dataset:", dataset_names, key="left_ds")
-                
-            with join_col2:
-                right_dataset = st.selectbox(
-                    "Right Dataset:", 
-                    [name for name in dataset_names if name != left_dataset],
-                    key="right_ds"
-                )
-                
-            with join_col3:
-                join_type = st.selectbox(
-                    "Join Type:",
-                    ["inner", "left", "right", "outer"],
-                    help="Inner: Only matching rows | Left: All left + matches | Right: All right + matches | Outer: Everything",
-                    key="join_type"
-                )
-            
-            # Select join keys
-            if left_dataset and right_dataset:
-                left_df = st.session_state.datasets[left_dataset]
-                right_df = st.session_state.datasets[right_dataset]
-                
-                join_key_col1, join_key_col2 = st.columns(2)
-                
-                with join_key_col1:
-                    left_key = st.selectbox(
-                        f"Join key from {left_dataset}:",
-                        left_df.columns.tolist(),
-                        key="left_key"
-                    )
-                    
-                with join_key_col2:
-                    right_key = st.selectbox(
-                        f"Join key from {right_dataset}:",
-                        right_df.columns.tolist(),
-                        key="right_key"
-                    )
-                
-                # Data type compatibility check
-                if left_key and right_key:
-                    left_dtype = str(left_df[left_key].dtype)
-                    right_dtype = str(right_df[right_key].dtype)
-                    
-                    compatibility_col1, compatibility_col2 = st.columns(2)
-                    
-                    with compatibility_col1:
-                        if left_dtype == right_dtype:
-                            st.success(f"✅ Compatible types: `{left_dtype}`")
-                            compatibility = True
-                        else:
-                            st.warning(f"⚠️ Type mismatch: `{left_dtype}` vs `{right_dtype}`")
-                            compatibility = False
-                    
-                    with compatibility_col2:
-                        auto_fix = st.checkbox(
-                            "🔧 Auto-fix types", 
-                            value=not compatibility,
-                            help="Automatically convert data types to enable joining"
-                        )
-                    
-                    # Join button
-                    if st.button("🔗 **Join Datasets**", type="primary"):
-                        try:
-                            left_prep = left_df.copy()
-                            right_prep = right_df.copy()
-                            
-                            # Auto-fix data types if requested
-                            if auto_fix and not compatibility:
-                                try:
-                                    if 'object' in [left_dtype, right_dtype]:
-                                        left_prep[left_key] = left_prep[left_key].astype(str)
-                                        right_prep[right_key] = right_prep[right_key].astype(str)
-                                    elif 'int' in left_dtype and 'float' in right_dtype:
-                                        left_prep[left_key] = left_prep[left_key].astype(float)
-                                    elif 'float' in left_dtype and 'int' in right_dtype:
-                                        right_prep[right_key] = right_prep[right_key].astype(float)
-                                except Exception as conv_error:
-                                    st.warning(f"Type conversion failed: {conv_error}")
-                            
-                            # Perform the join
-                            joined_df = pd.merge(
-                                left_prep, 
-                                right_prep, 
-                                left_on=left_key, 
-                                right_on=right_key, 
-                                how=join_type,
-                                suffixes=('_left', '_right')
-                            )
-                            
-                            st.session_state.joined_data = joined_df
-                            
-                            # Success metrics
-                            success_col1, success_col2, success_col3, success_col4 = st.columns(4)
-                            with success_col1:
-                                st.metric("✅ Result Rows", f"{len(joined_df):,}")
-                            with success_col2:
-                                st.metric("📊 Columns", len(joined_df.columns))
-                            with success_col3:
-                                efficiency = len(joined_df) / max(len(left_df), len(right_df)) * 100
-                                st.metric("🎯 Efficiency", f"{efficiency:.1f}%")
-                            with success_col4:
-                                st.metric("🔗 Join Type", join_type.title())
-                            
-                        except Exception as e:
-                            st.error(f"❌ Join failed: {str(e)}")
-                            if "dtype" in str(e).lower():
-                                st.info("💡 **Try**: Enable 'Auto-fix types' option")
-    
-    # Select working dataset
-    if st.session_state.joined_data is not None:
-        dataset_options = ["🔗 Joined Data"] + [f"📄 {name}" for name in st.session_state.datasets.keys()]
+        dataset_options = [f"📄 {name}" for name in st.session_state.datasets.keys()]
         selected_option = st.selectbox("**Select dataset to analyze:**", dataset_options)
-        
-        if selected_option.startswith("🔗"):
-            df = st.session_state.joined_data
-            dataset_name = "Joined Data"
-        else:
-            dataset_name = selected_option.replace("📄 ", "")
-            df = st.session_state.datasets[dataset_name]
+        dataset_name = selected_option.replace("📄 ", "")
+        df = st.session_state.datasets[dataset_name]
     else:
-        if st.session_state.datasets:
-            dataset_options = [f"📄 {name}" for name in st.session_state.datasets.keys()]
-            selected_option = st.selectbox("**Select dataset to analyze:**", dataset_options)
-            dataset_name = selected_option.replace("📄 ", "")
-            df = st.session_state.datasets[dataset_name]
-        else:
-            df = None
-
-    if df is not None:
-        if 'data_filter' not in st.session_state:
-            st.session_state.data_filter = DataFilter(df)
+        dataset_name = list(st.session_state.datasets.keys())[0]
+        df = st.session_state.datasets[dataset_name]
     
-        # Check if we need to reset working data (new dataset selected)
-        if len(st.session_state.base_df) != len(df) or list(st.session_state.base_df.columns) != list(df.columns):
-            st.session_state.data_filter = DataFilter(df)
+    # Initialize session state variables for current dataset
+    if 'base_df' not in st.session_state:
+        st.session_state.base_df = df.copy()
+    if 'working_df' not in st.session_state:
+        st.session_state.working_df = df.copy()
+    if 'active_filters' not in st.session_state:
+        st.session_state.active_filters = []
+    
+    # Check if dataset changed (reset state for new dataset)
+    if (len(st.session_state.base_df) != len(df) or 
+        list(st.session_state.base_df.columns) != list(df.columns)):
+        st.session_state.base_df = df.copy()
+        st.session_state.working_df = df.copy()
+        st.session_state.active_filters = []
+    
+    # Quick metrics header (always visible)
+    current_rows = len(st.session_state.working_df)
+    original_rows = len(st.session_state.base_df)
+    
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    
+    with metric_col1:
+        if current_rows != original_rows:
+            delta = f"{current_rows - original_rows:,} filtered"
+            st.metric("📊 **Total Rows**", f"{current_rows:,}", delta=delta)
+        else:
+            st.metric("📊 **Total Rows**", f"{current_rows:,}")
+    
+    with metric_col2:
+        st.metric("📋 **Columns**", len(st.session_state.working_df.columns))
+    
+    with metric_col3:
+        numeric_count = len(st.session_state.working_df.select_dtypes(include=[np.number]).columns)
+        st.metric("🔢 **Numeric**", numeric_count)
+    
+    with metric_col4:
+        missing_count = st.session_state.working_df.isnull().sum().sum()
+        st.metric("❓ **Missing**", f"{missing_count:,}")
+    
+    # Filter status bar
+    if len(st.session_state.active_filters) > 0:
+        filter_col1, filter_col2 = st.columns([4, 1])
         
-        # Quick metrics (always visible)
-        filter_info = st.session_state.data_filter.get_filter_info()
-        working_df = st.session_state.data_filter.get_filtered_data()
-        metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+        with filter_col1:
+            reduction_pct = ((original_rows - current_rows) / original_rows * 100)
+            st.markdown(f"""
+            🔍 **Active Filters:** Showing **{current_rows:,}** of **{original_rows:,}** rows 
+            ({reduction_pct:.1f}% filtered)
+            """)
         
-        with metric_col1:
-            if filter_info['active']:
-                delta = f"{filter_info['filtered_count'] - filter_info['original_count']:,} filtered"
-                st.metric("📊 **Total Rows**", f"{filter_info['filtered_count']:,}", delta=delta)
-            else:
-                st.metric("📊 **Total Rows**", f"{len(working_df):,}")
-
-        with metric_col2:
-            st.metric("📋 **Columns**", len(working_df.columns))
-
-        with metric_col3:
-            numeric_count = len(working_df.select_dtypes(include=[np.number]).columns)
-            st.metric("🔢 **Numeric**", numeric_count)
-
-        with metric_col4:
-            missing_count = working_df.isnull().sum().sum()
-            st.metric("❓ **Missing**", f"{missing_count:,}")
+        with filter_col2:
+            if st.button("❌ Clear Filters", key="clear_all_filters"):
+                st.session_state.working_df = st.session_state.base_df.copy()
+                st.session_state.active_filters = []
+                st.rerun()
+    
+    st.markdown("---")
+    
+    # =================== CREATE TABS ===================
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🔍 Filter Data", 
+        "📊 Visualize", 
+        "📈 Statistics", 
+        "🧹 Preview",
+        "💾 Export"
+    ])
+    
+    # =================== TAB 1: FILTERING ===================
+    with tab1:
+        # Initialize the filter module
+        if 'data_filter' not in st.session_state:
+            st.session_state.data_filter = DataFilter(st.session_state.base_df)
         
-        if st.session_state.data_filter.render_filter_summary():
-            # User clicked clear filters
-            st.session_state.data_filter.clear_filters()
-            st.rerun()
-            
-            st.markdown("---")
-            
-            # Create filter summary bar
-            filter_col1, filter_col2 = st.columns([4, 1])
-            
-            with filter_col1:
-                reduction_pct = ((len(base_df) - len(working_df)) / len(base_df) * 100)
-                
-                st.markdown(f"""
-                🔍 **Active Filter:** {filter_info['type']} • 
-                Showing **{len(working_df):,}** of **{len(base_df):,}** rows 
-                ({reduction_pct:.1f}% filtered)
-                """)
-            
-            with filter_col2:
-                if st.button("❌ Clear All Filters", key="clear_filters"):
-                    st.session_state.active_filters = []
-                    st.session_state.working_df = st.session_state.base_df.copy()
-                    st.rerun()
-
-        st.markdown("---")
-
-
+        # Check if we need to reinitialize for new dataset
+        if (len(st.session_state.data_filter.original_df) != len(st.session_state.base_df) or
+            list(st.session_state.data_filter.original_df.columns) != list(st.session_state.base_df.columns)):
+            st.session_state.data_filter = DataFilter(st.session_state.base_df)
         
-        # Data preview (collapsible)
-        with st.expander("📋 **Data Preview** - Explore Your Data", expanded=False):
-            preview_col1, preview_col2 = st.columns([3, 1])
-            
-            with preview_col1:
-                st.markdown(f"*Dataset: {dataset_name}*")
-            with preview_col2:
-                preview_rows = st.selectbox("Rows to show:", [5, 10, 20, 50], index=1, key="preview_rows")
-            
-            st.dataframe(working_df.head(preview_rows), use_container_width=True)
-            
-            # Column info
-            col_info = pd.DataFrame({
-                'Column': working_df.columns,
-                'Type': [str(dtype) for dtype in working_df.dtypes],
-                'Non-Null': working_df.count(),
-                'Null Count': working_df.isnull().sum(),
-                'Unique Values': [working_df[col].nunique() for col in working_df.columns]
-            })
-            
-            with st.expander("📊 Column Details"):
-                st.dataframe(col_info, use_container_width=True)
+        # Render the filtering UI
+        filtered_data, filters_applied = st.session_state.data_filter.render_filter_ui()
         
-        # Data cleaning (collapsible)
-        with st.expander("🧹 **Data Cleaning** - Improve Data Quality", expanded=False):
-            st.markdown("*Automated data quality checks and cleaning options*")
-            
-            # Data quality metrics
-            quality_col1, quality_col2, quality_col3, quality_col4 = st.columns(4)
-            
-            duplicates = working_df.duplicated().sum()
-            missing_cells = working_df.isnull().sum().sum()
-            empty_rows = working_df.isnull().all(axis=1).sum()
-
-            with quality_col1:
-                st.metric("🔄 Duplicates", duplicates, delta=None, delta_color="inverse")
-            with quality_col2:
-                st.metric("❓ Missing Values", missing_cells, delta=None, delta_color="inverse")
-            with quality_col3:
-                st.metric("📭 Empty Rows", empty_rows, delta=None, delta_color="inverse")
-            with quality_col4:
-                quality_score = max(0, 100 - ((duplicates + missing_cells + empty_rows) / len(df) * 100))
-                st.metric("🎯 Quality Score", f"{quality_score:.1f}%")
-            
-            # Quick cleaning actions
-            if duplicates > 0 or missing_cells > 0 or empty_rows > 0:
-                st.markdown("**Quick Actions:**")
-                clean_col1, clean_col2, clean_col3 = st.columns(3)
-                
-                with clean_col1:
-                    if duplicates > 0 and st.button(f"Remove {duplicates} Duplicates"):
-                        working_df = working_df.drop_duplicates()
-                        st.success("Duplicates removed!")
-                        st.rerun()
-                
-                with clean_col2:
-                    if missing_cells > 0 and st.button("Smart Fill Missing"):
-                        # Simple smart filling
-                        for col in working_df.columns:
-                            if working_df[col].dtype in ['int64', 'float64']:
-                                working_df[col] = working_df[col].fillna(working_df[col].median())
-                            elif working_df[col].dtype == 'object':
-                                mode_val = working_df[col].mode()
-                                if len(mode_val) > 0:
-                                    working_df[col] = working_df[col].fillna(mode_val[0])
-                        st.success("Missing values filled!")
-                        st.rerun()
-                
-                with clean_col3:
-                    if empty_rows > 0 and st.button(f"Remove {empty_rows} Empty Rows"):
-                        working_df = working_df.dropna(how='all')
-                        st.success("Empty rows removed!")
-                        st.rerun()
+        # Update session state based on filtering results
+        if filters_applied:
+            st.session_state.working_df = filtered_data.copy()
+            filter_info = st.session_state.data_filter.get_filter_info()
+            st.session_state.active_filters = [filter_info] if filter_info['active'] else []
+        else:
+            # Check if we should clear filters
+            if len(st.session_state.active_filters) > 0:
+                st.session_state.working_df = st.session_state.base_df.copy()
+                st.session_state.active_filters = []
+    
+    # =================== TAB 2: VISUALIZATION ===================
+    with tab2:
+        # Initialize the visualizer module
+        visualizer = DataVisualizer()
         
-
-
-        # Advanced filtering (collapsible)
-        with st.expander("🔍 **Filtering** - Focus Your Analysis", expanded=False):
-            # This returns the filtered data
-            filtered_data, filters_applied = st.session_state.data_filter.render_filter_ui()
+        # Render the visualization tab
+        visualizer.render_visualization_tab()
+    
+    # =================== TAB 3: STATISTICS ===================
+    with tab3:
+        # Initialize the statistics module
+        statistics = DataStatistics()
         
-        # Get current working data (this always works!)
-        working_df = st.session_state.data_filter.get_filtered_data()
+        # Render the statistics tab
+        statistics.render_statistics_tab()
+    
+    # =================== TAB 4: PREVIEW ===================
+    with tab4:
+        # Initialize the preview module
+        preview = DataPreview()
         
-        # Update column lists for visualizations
-        numeric_cols = working_df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = working_df.select_dtypes(include=['object', 'category']).columns.tolist()
-        date_cols = working_df.select_dtypes(include=['datetime64']).columns.tolist()
-        all_cols = working_df.columns.tolist()
+        # Render the preview tab
+        preview.render_preview_tab()
+    
+    # =================== TAB 5: EXPORT ===================
+    with tab5:
+        # Initialize the exporter module
+        exporter = DataExporter()
         
-        # Debug info (remove after testing)
-        st.write(f"🔍 **Current Data**: {len(working_df)} rows ready for visualization")
-
-        st.markdown("---")
-        
-        # FEATURE ENGINEERING (collapsible)
-        with st.expander("🔧 **Feature Engineering** - Transform Your Data for ML", expanded=False):
-            st.markdown("*Create new features and transform existing ones to improve model performance*")
-            
-            # Initialize FE class
-            if 'fe_handler' not in st.session_state:
-                st.session_state.fe_handler = FeatureEngineer(working_df)
-            
-            fe_handler = st.session_state.fe_handler
-
-            column_info = fe_handler.get_column_info()
-            numeric_cols = column_info['numeric']
-            categorical_cols = column_info['categorical'] 
-            date_cols = column_info['datetime']
-            
-            # UI logic stays here, but calls methods from FeatureEngineer
-            fe_type = st.selectbox("Select technique:", 
-                [    
-                    "🔢 Numerical Transformations",
-                    "📝 Text Feature Extraction", 
-                    "📅 Date/Time Features",
-                    "🏷️ Categorical Encoding",
-                    "⚡ Advanced Features",
-                    "📊 Statistical Features"
-                ]
-            )
-            
-            if fe_type == "🔢 Numerical Transformations":
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    selected_col = st.selectbox("Select column:", numeric_cols)
-                    transform_type = st.selectbox("Transformation:", 
-                                                fe_handler.get_available_numerical_transforms())
-                
-                with col2:
-                    # Show transform info
-                    info = fe_handler.get_transform_info(transform_type)
-                    st.info(f"**{transform_type}:** {info['description']}")
-                    
-                    # Handle special parameters
-                    kwargs = {}
-                    if transform_type == "Quantile Binning":
-                        kwargs['n_bins'] = st.slider("Number of bins:", 2, 20, 5)
-                    
-                    new_name = st.text_input("New column name:", 
-                                            value=f"{selected_col}_{transform_type.lower().replace(' ', '_')}")
-                
-                if st.button("🔧 Apply Transformation"):
-                    try:
-                        created_col = fe_handler.apply_numerical_transform(
-                            selected_col, transform_type, new_name, **kwargs
-                        )
-                        st.success(f"✅ Created feature: {created_col}")
-                        st.rerun()
-                    except ValueError as e:
-                        st.error(f"❌ {str(e)}")
-            
-            # Repeat for other FE types...
-            
-            # Update working dataframe
-            working_df = fe_handler.df
-
-        # VISUALIZATIONS (Always prominent and expanded)
-        st.header("📈 **Data Visualization**")
-        st.markdown("*Create interactive charts and explore your data visually*")
-
-        current_data = get_current_data()
-        columns = get_column_lists()
-
-        st.write(f"🔍 **Chart Data**: {len(current_data)} rows")  # Debug info
-        
-        # Chart controls
-        viz_col1, viz_col2, viz_col3 = st.columns(3)
-        
-        with viz_col1:
-            chart_type = st.selectbox(
-                "**Chart Type:**",
-                ["📊 Bar Chart", "📈 Line Chart", "🔍 Scatter Plot", "📊 Histogram", "📦 Box Plot", "🔥 Heatmap", "⏰ Time Series"]
-            )
-        
-        # Get column types for smart defaults
-        numeric_cols = working_df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = working_df.select_dtypes(include=['object', 'category']).columns.tolist()
-        date_cols = working_df.select_dtypes(include=['datetime64']).columns.tolist()
-        all_cols = working_df.columns.tolist()
-
-        # Chart configuration based on type
-        fig = None
-        
-        if chart_type == "📊 Bar Chart":
-            with viz_col2:
-                x_axis = st.selectbox("**X-axis:**", all_cols, key="bar_x")
-            with viz_col3:
-                y_axis = st.selectbox("**Y-axis:**", numeric_cols, key="bar_y")
-            
-            if x_axis and y_axis:
-                fig = px.bar(current_data, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis} (n={len(current_data)})")
-        
-        elif chart_type == "📈 Line Chart":
-            with viz_col2:
-                x_axis = st.selectbox("**X-axis:**", all_cols, key="line_x")
-            with viz_col3:
-                y_axis = st.selectbox("**Y-axis:**", numeric_cols, key="line_y")
-            
-            if x_axis and y_axis:
-                fig = px.line(working_df, x=x_axis, y=y_axis, title=f"{y_axis} over {x_axis}")
-        
-        elif chart_type == "🔍 Scatter Plot":
-            with viz_col2:
-                x_axis = st.selectbox("**X-axis:**", numeric_cols, key="scatter_x")
-            with viz_col3:
-                y_axis = st.selectbox("**Y-axis:**", numeric_cols, key="scatter_y")
-            
-            # Additional scatter options
-            scatter_col1, scatter_col2 = st.columns(2)
-            with scatter_col1:
-                color_by = st.selectbox("**Color by:**", ["None"] + categorical_cols + numeric_cols[:3])
-            with scatter_col2:
-                size_by = st.selectbox("**Size by:**", ["None"] + numeric_cols[:3])
-            
-            if x_axis and y_axis:
-                color_col = None if color_by == "None" else color_by
-                size_col = None if size_by == "None" else size_by
-                
-                fig = px.scatter(
-                    working_df, x=x_axis, y=y_axis, 
-                    color=color_col, size=size_col,
-                    title=f"{y_axis} vs {x_axis}",
-                    hover_data=numeric_cols[:2]
-                )
-        
-        elif chart_type == "📊 Histogram":
-            with viz_col2:
-                column = st.selectbox("**Column:**", numeric_cols, key="hist_col")
-            with viz_col3:
-                bins = st.slider("**Bins:**", 10, 100, 30)
-            
-            if column:
-                fig = px.histogram(working_df, x=column, nbins=bins, title=f"Distribution of {column}")
-        
-        elif chart_type == "📦 Box Plot":
-            with viz_col2:
-                y_axis = st.selectbox("**Y-axis:**", numeric_cols, key="box_y")
-            with viz_col3:
-                x_axis = st.selectbox("**Group by:**", ["None"] + categorical_cols, key="box_x")
-            
-            if y_axis:
-                x_col = None if x_axis == "None" else x_axis
-                fig = px.box(working_df, x=x_col, y=y_axis, title=f"Distribution of {y_axis}")
-        
-        elif chart_type == "🔥 Heatmap":
-            if len(numeric_cols) >= 2:
-                corr_matrix = working_df[numeric_cols].corr()
-                fig = px.imshow(
-                    corr_matrix,
-                    title="Correlation Heatmap",
-                    color_continuous_scale="RdBu",
-                    aspect="auto",
-                    text_auto=True
-                )
-            else:
-                st.warning("⚠️ Need at least 2 numeric columns for correlation heatmap")
-        
-        elif chart_type == "⏰ Time Series":
-            if date_cols:
-                with viz_col2:
-                    date_col = st.selectbox("**Date column:**", date_cols, key="ts_date")
-                with viz_col3:
-                    value_col = st.selectbox("**Value column:**", numeric_cols, key="ts_value")
-                
-                if date_col and value_col:
-                    # Sort by date
-                    ts_df = working_df.sort_values(date_col)
-                    fig = px.line(ts_df, x=date_col, y=value_col, title=f"{value_col} over time")
-            else:
-                st.warning("⚠️ No date columns found for time series")
-        
-        # Display chart
-        if fig:
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Summary statistics (collapsible)
-        with st.expander("📊 **Summary Statistics** - Data Insights", expanded=False):
-            if numeric_cols:
-                summary_type = st.selectbox(
-                    "Analysis type:",
-                    ["📈 Descriptive Statistics", "👥 Group Analysis", "❓ Missing Data Report"]
-                )
-                
-                if summary_type == "📈 Descriptive Statistics":
-                    st.dataframe(working_df[numeric_cols].describe(), use_container_width=True)
-                
-                elif summary_type == "👥 Group Analysis" and categorical_cols:
-                    group_col1, group_col2 = st.columns(2)
-                    with group_col1:
-                        group_by_col = st.selectbox("Group by:", categorical_cols)
-                    with group_col2:
-                        metric_col = st.selectbox("Analyze:", numeric_cols)
-                    
-                    if group_by_col and metric_col:
-                        grouped_stats = working_df.groupby(group_by_col)[metric_col].agg([
-                            'count', 'mean', 'median', 'std', 'min', 'max'
-                        ]).round(2)
-                        st.dataframe(grouped_stats, use_container_width=True)
-                
-                elif summary_type == "❓ Missing Data Report":
-                    missing_data = pd.DataFrame({
-                        'Column': working_df.columns,
-                        'Missing Count': working_df.isnull().sum(),
-                        'Missing %': (working_df.isnull().sum() / len(working_df) * 100).round(2),
-                        'Data Type': working_df.dtypes
-                    })
-                    missing_data = missing_data[missing_data['Missing Count'] > 0]
-                    
-                    if len(missing_data) > 0:
-                        st.dataframe(missing_data, use_container_width=True)
-                    else:
-                        st.success("🎉 No missing data found!")
-        
-        # Export section (collapsible)
-        with st.expander("💾 **Export Data** - Download Results", expanded=False):
-            export_col1, export_col2, export_col3 = st.columns(3)
-            
-            with export_col1:
-                csv = working_df.to_csv(index=False)
-                st.download_button(
-                    label="📥 **Download Filtered Data**",
-                    data=csv,
-                    file_name=f"{dataset_name}_filtered.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            
-            with export_col2:
-                if numeric_cols:
-                    summary_csv = working_df[numeric_cols].describe().to_csv()
-                    st.download_button(
-                        label="📊 **Download Statistics**",
-                        data=summary_csv,
-                        file_name=f"{dataset_name}_stats.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-            
-            with export_col3:
-                # Export info
-                export_info = pd.DataFrame([{
-                    'Dataset': dataset_name,
-                    'Original Rows': len(working_df),
-                    'Export Date': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                    'Columns': len(working_df.columns)
-                }])
-                info_csv = export_info.to_csv(index=False)
-                st.download_button(
-                    label="ℹ️ **Download Metadata**",
-                    data=info_csv,
-                    file_name=f"{dataset_name}_info.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+        # Render the export tab
+        exporter.render_export_tab()
 
 else:
     # Welcome screen when no data is uploaded
     st.markdown("""
     <div style="text-align: center; padding: 50px 0;">
         <h2>🚀 Welcome to InsightStream</h2>
-        <p style="font-size: 18px; color: #666;">Your Advanced Business Intelligence Dashboard</p>
+        <p style="font-size: 18px; color: #666;">Your Modular Business Intelligence Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -676,61 +220,51 @@ else:
     
     with col1:
         st.markdown("""
-        ### 📁 **Multi-File Management**
-        - Upload multiple CSV files
-        - Smart data type detection
-        - Easy dataset switching
+        ### 🔍 **Smart Filtering**
+        - Simple point-and-click filters
+        - Advanced query builder
+        - Real-time data updates
         """)
     
     with col2:
         st.markdown("""
-        ### 🔗 **Advanced Joining**
-        - Join datasets with different types
-        - Automatic type conversion
-        - Join compatibility checking
+        ### 📊 **Interactive Visualizations**
+        - Multiple chart types
+        - Dynamic data binding
+        - Export-ready graphics
         """)
     
     with col3:
         st.markdown("""
-        ### 📊 **Smart Visualizations**
-        - Interactive charts and plots
-        - Time series analysis
-        - Correlation heatmaps
+        ### 📈 **Deep Analytics**
+        - Statistical summaries
+        - Data quality reports
+        - Comprehensive exports
         """)
     
-    with st.expander("🎯 **Feature Overview** - What You Can Do"):
+    with st.expander("🏗️ **Architecture Overview** - Modular Design"):
         st.markdown("""
-        **🔍 Advanced Filtering:**
-        - Simple point-and-click filters
-        - Powerful query builder with pandas syntax
-        - Real-time filter preview
+        **🧩 Modular Components:**
         
-        **🧹 Data Cleaning:**
-        - Automated quality checks
-        - One-click data cleaning
-        - Missing value handling
+        - **`data_filter.py`** - Independent filtering logic
+        - **`data_visualizer.py`** - Chart generation and display  
+        - **`data_statistics.py`** - Statistical analysis and insights
+        - **`data_preview.py`** - Data exploration and quality checks
+        - **`data_exporter.py`** - Export functionality for all formats
         
-        **📈 Rich Visualizations:**
-        - Bar, line, scatter, and box plots
-        - Time series with date handling
-        - Interactive correlation heatmaps
-        
-        **📊 Deep Analytics:**
-        - Descriptive statistics
-        - Group-by analysis
-        - Data quality reporting
-        
-        **💾 Export Everything:**
-        - Filtered datasets
-        - Summary statistics  
-        - Analysis metadata
+        **✅ Benefits:**
+        - Clean separation of concerns
+        - Easy to maintain and extend
+        - No variable scope issues
+        - Independent testing possible
+        - Consistent data flow through session state
         """)
 
 # Footer
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: #666; font-size: 14px;'>"
-    "Built with ❤️ using Streamlit • <strong>InsightStream v2.0</strong> • Ready for ML Integration"
+    "Built with ❤️ using Streamlit • <strong>InsightStream v0.3 - Modular</strong>"
     "</div>", 
     unsafe_allow_html=True
 )
