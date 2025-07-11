@@ -10,6 +10,7 @@ from data_visualizer import DataVisualizer
 from data_statistics import DataStatistics
 from data_exporter import DataExporter
 from data_preview import DataPreview
+from feature_engineering import FeatureEngineer
 
 # Page configuration
 st.set_page_config(
@@ -140,10 +141,11 @@ if st.session_state.datasets:
     st.markdown("---")
     
     # =================== CREATE TABS ===================
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🔍 Filter Data", 
         "📊 Visualize", 
         "📈 Statistics", 
+        "🔧 Feature Engineering",
         "🧹 Preview",
         "💾 Export"
     ])
@@ -188,6 +190,54 @@ if st.session_state.datasets:
         
         # Render the statistics tab
         statistics.render_statistics_tab()
+
+
+    # =================== TAB 4: FEATURE ENGINEERING ===================
+    with tab4:
+        st.header("🔧 **Feature Engineering**")
+        
+        # Get current data
+        current_data = st.session_state.working_df.copy()
+        
+        # Initialize FeatureEngineer directly
+        if 'fe_handler' not in st.session_state:
+            st.session_state.fe_handler = FeatureEngineer(current_data)
+        
+        # Check if data changed
+        if not st.session_state.fe_handler.df.equals(current_data):
+            st.session_state.fe_handler = FeatureEngineer(current_data)
+        
+        fe_handler = st.session_state.fe_handler
+        
+        # UI code directly here - no wrapper needed
+        column_info = fe_handler.get_column_info()
+        numeric_cols = column_info['numeric']
+        
+        if numeric_cols:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                selected_col = st.selectbox("Select column:", numeric_cols)
+                transform_type = st.selectbox("Transformation:", 
+                                            fe_handler.get_available_numerical_transforms())
+            
+            with col2:
+                info = fe_handler.get_transform_info(transform_type)
+                st.info(f"**{transform_type}:** {info['description']}")
+                
+                new_name = st.text_input("New column name:", 
+                                        value=f"{selected_col}_{transform_type.lower().replace(' ', '_')}")
+            
+            if st.button("🔧 Apply Transformation"):
+                try:
+                    created_col = fe_handler.apply_numerical_transform(
+                        selected_col, transform_type, new_name
+                    )
+                    st.success(f"✅ Created feature: {created_col}")
+                    # Update working data
+                    st.session_state.working_df = fe_handler.df.copy()
+                except ValueError as e:
+                    st.error(f"❌ {str(e)}")
     
     # =================== TAB 4: PREVIEW ===================
     with tab4:
