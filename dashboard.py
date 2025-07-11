@@ -344,19 +344,6 @@ if st.session_state.datasets:
             )
             
             filtered_df = df.copy()
-
-            # Update active filters based on what was applied
-            if len(filtered_df) != len(df):
-                # Store filter info - you'll populate this based on your filter type
-                filter_info = {
-                    'type': filter_type,  # "🎛️ Simple Filters" or "⚡ Query Builder"
-                    'count': len(filtered_df),
-                    'original_count': len(df),
-                    'details': []  # Will hold specific filter descriptions
-                }
-                st.session_state.active_filters = [filter_info]  # Replace with current
-            else:
-                st.session_state.active_filters = []  # No filters active
             
             if filter_type == "🎛️ Simple Filters":
                 filter_columns = st.multiselect(
@@ -414,6 +401,19 @@ if st.session_state.datasets:
                                         (filtered_df[col].dt.date <= end_date)
                                     ]
             
+                # Update active filters based on what was applied
+                if len(filtered_df) != len(df):
+                    # Store filter info - you'll populate this based on your filter type
+                    filter_info = {
+                        'type': filter_type,  # "🎛️ Simple Filters" or "⚡ Query Builder"
+                        'count': len(filtered_df),
+                        'original_count': len(df),
+                        'details': []  # Will hold specific filter descriptions
+                    }
+                    st.session_state.active_filters = [filter_info]  # Replace with current
+                else:
+                    st.session_state.active_filters = []  # No filters active
+
             else:  # Query Builder
                 query_text = st.text_area(
                     "Write a pandas query:",
@@ -426,9 +426,22 @@ if st.session_state.datasets:
                     try:
                         filtered_df = df.query(query_text)
                         st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
+
+                        if len(filtered_df) != len(df):
+                            filter_info = {
+                                'type': filter_type,
+                                'count': len(filtered_df),
+                                'original_count': len(df),
+                                'details': [f"Query: {query_text[:50]}{'...' if len(query_text) > 50 else ''}"]
+                            }
+                            st.session_state.active_filters = [filter_info]
+                        else:
+                            st.session_state.active_filters = []
+
                     except Exception as e:
                         st.error(f"Query error: {str(e)}")
                         filtered_df = df.copy()
+                        st.session_state.active_filters = []
                 
                 # Query examples
                 with st.expander("💡 Query Examples"):
