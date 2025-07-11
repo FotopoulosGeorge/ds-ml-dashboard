@@ -1,4 +1,4 @@
-# data_filter.py
+# data_filter.py - Independent filtering module
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -36,14 +36,25 @@ class DataFilter:
         Render the filtering UI and return filtered dataframe
         Returns: (filtered_df, filter_applied)
         """
-        st.markdown("*Filter data using simple controls or advanced queries*")
+        st.markdown("*Filter data using simple controls, advanced queries, or join datasets*")
         
-        # Filter type selection
-        filter_type = st.radio(
-            "Choose filter mode:",
-            ["🎛️ Simple Filters", "⚡ Query Builder"],
-            horizontal=True
-        )
+        # Check if multiple datasets are available for joining
+        datasets = st.session_state.get('datasets', {})
+        
+        if len(datasets) > 1:
+            # Filter type selection with join option
+            filter_type = st.radio(
+                "Choose operation:",
+                ["🎛️ Simple Filters", "⚡ Query Builder", "🔗 Join Datasets"],
+                horizontal=True
+            )
+        else:
+            # Filter type selection without join option
+            filter_type = st.radio(
+                "Choose filter mode:",
+                ["🎛️ Simple Filters", "⚡ Query Builder"],
+                horizontal=True
+            )
         
         filtered_df = self.original_df.copy()
         filters_applied = False
@@ -51,8 +62,12 @@ class DataFilter:
         
         if filter_type == "🎛️ Simple Filters":
             filtered_df, filters_applied, applied_filter_details = self._simple_filters()
-        else:
+        elif filter_type == "⚡ Query Builder":
             filtered_df, filters_applied, applied_filter_details = self._query_builder()
+        elif filter_type == "🔗 Join Datasets":
+            filtered_df, filters_applied, applied_filter_details = self._join_datasets()
+        else:
+            filtered_df, filters_applied, applied_filter_details = self._simple_filters()
         
         # Update internal state
         self.filtered_df = filtered_df
@@ -83,7 +98,6 @@ class DataFilter:
         
         if not filter_columns:
             return self.original_df.copy(), False, []
-        
         filtered_df = self.original_df.copy()
         filters_applied = False
         applied_filter_details = []
@@ -106,6 +120,139 @@ class DataFilter:
                     applied_filter_details.append(filter_detail)
         
         return filtered_df, filters_applied, applied_filter_details
+    
+    def _join_datasets(self):
+        """Handle dataset joining"""
+        st.subheader("🔗 Join Datasets")
+        
+        datasets = st.session_state.get('datasets', {})
+        dataset_names = list(datasets.keys())
+        
+        if len(dataset_names) < 2:
+            st.warning("Need at least 2 datasets to perform join")
+            return self.original_df.copy(), False, []
+        
+        # Find current dataset name
+        current_dataset_name = None
+        for name, df in datasets.items():
+            if df.equals(self.original_df):
+                current_dataset_name = name
+                break
+        
+        join_col1, join_col2, join_col3 = st.columns(3)
+        
+        with join_col1:
+            # Set current dataset as default left dataset
+            left_default_idx = dataset_names.index(current_dataset_name) if current_dataset_name in dataset_names else 0
+            left_dataset = st.selectbox("Left Dataset:", dataset_names, index=left_default_idx, key="left_ds")
+            
+        with join_col2:
+            right_options = [name for name in dataset_names if name != left_dataset]
+            right_dataset = st.selectbox("Right Dataset:", right_options, key="right_ds")
+            
+        with join_col3:
+            join_type = st.selectbox(
+                "Join Type:",
+                ["inner", "left", "right", "outer"],
+                help="Inner: Only matching rows | Left: All left + matches | Right: All right + matches | Outer: Everything",
+                key="join_type"
+            )
+        
+        if left_dataset and right_dataset:
+            left_df = datasets[left_dataset].copy()
+            right_df = datasets[right_dataset].copy()
+            
+            join_key_col1, join_key_col2 = st.columns(2)
+            
+            with join_key_col1:
+                left_key = st.selectbox(
+                    f"Join key from {left_dataset}:",
+                    left_df.columns.tolist(),
+                    key="left_key"
+                )
+                
+            with join_key_col2:
+                right_key = st.selectbox(
+                    f"Join key from {right_dataset}:",
+                    right_df.columns.tolist(),
+                    key="right_key"
+                )
+            
+            # Data type compatibility check
+            if left_key and right_key:
+                left_dtype = str(left_df[left_key].dtype)
+                right_dtype = str(right_df[right_key].dtype)
+                
+                compatibility_col1, compatibility_col2 = st.columns(2)
+                
+                with compatibility_col1:
+                    if left_dtype == right_dtype:
+                        st.success(f"✅ Compatible types: `{left_dtype}`")
+                        compatibility = True
+                    else:
+                        st.warning(f"⚠️ Type mismatch: `{left_dtype}` vs `{right_dtype}`")
+                        compatibility = False
+                
+                with compatibility_col2:
+                    auto_fix = st.checkbox(
+                        "🔧 Auto-fix types", 
+                        value=not compatibility,
+                        help="Automatically convert data types to enable joining"
+                    )
+                
+                # Join button
+                if st.button("🔗 **Join Datasets**", type="primary", key="join_button"):
+                    try:
+                        left_prep = left_df.copy()
+                        right_prep = right_df.copy()
+                        
+                        # Auto-fix data types if requested
+                        if auto_fix and not compatibility:
+                            try:
+                                if 'object' in [left_dtype, right_dtype]:
+                                    left_prep[left_key] = left_prep[left_key].astype(str)
+                                    right_prep[right_key] = right_prep[right_key].astype(str)
+                                elif 'int' in left_dtype and 'float' in right_dtype:
+                                    left_prep[left_key] = left_prep[left_key].astype(float)
+                                elif 'float' in left_dtype and 'int' in right_dtype:
+                                    right_prep[right_key] = right_prep[right_key].astype(float)
+                            except Exception as conv_error:
+                                st.warning(f"Type conversion failed: {conv_error}")
+                        
+                        # Perform the join
+                        joined_df = pd.merge(
+                            left_prep, 
+                            right_prep, 
+                            left_on=left_key, 
+                            right_on=right_key, 
+                            how=join_type,
+                            suffixes=('_left', '_right')
+                        )
+                        
+                        # Success metrics
+                        success_col1, success_col2, success_col3, success_col4 = st.columns(4)
+                        with success_col1:
+                            st.metric("✅ Result Rows", f"{len(joined_df):,}")
+                        with success_col2:
+                            st.metric("📊 Columns", len(joined_df.columns))
+                        with success_col3:
+                            efficiency = len(joined_df) / max(len(left_df), len(right_df)) * 100
+                            st.metric("🎯 Efficiency", f"{efficiency:.1f}%")
+                        with success_col4:
+                            st.metric("🔗 Join Type", join_type.title())
+                        
+                        # Update the filter's original data to the joined result
+                        self.original_df = joined_df.copy()
+                        
+                        return joined_df.copy(), True, [f"Joined {left_dataset} + {right_dataset} on {left_key}/{right_key}"]
+                        
+                    except Exception as e:
+                        st.error(f"❌ Join failed: {str(e)}")
+                        if "dtype" in str(e).lower():
+                            st.info("💡 **Try**: Enable 'Auto-fix types' option")
+        
+        return self.original_df.copy(), False, []
+        
     
     def _handle_categorical_filter(self, df, col):
         """Handle categorical column filtering"""

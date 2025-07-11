@@ -1,44 +1,53 @@
-# 📊 InsightStream - Advanced BI Dashboard
+# 📊 InsightStream - Modular BI Dashboard
 
-A powerful, interactive Business Intelligence dashboard built with Streamlit that enables users to upload, join, filter, and visualize data with enterprise-level features.
+A powerful, modular Business Intelligence dashboard built with Streamlit that enables users to upload, join, filter, transform, and visualize data with enterprise-level features.
 
 ## 🚀 Key Features
 
-### 📁 Multi-File Data Management
+### 🏗️ **Modular Architecture**
+- **Independent modules** for each major function
+- **Clean data flow** through session state management
+- **No scope issues** - each module works independently
+- **Easy to extend** - add new features without breaking existing ones
+
+### 📁 **Multi-File Data Management**
 - Upload multiple CSV files simultaneously
-- Preview and manage datasets individually
 - Smart data type detection with automatic date parsing
+- **Dataset joining** with flexible join types and automatic type conversion
+- Easy dataset switching and management
 
-### 🔗 Advanced Data Joining
-- Join multiple datasets with flexible join types (inner, left, right, outer)
-- Custom join key selection from any column
-- Automatic handling of column conflicts with suffixes
-
-### 🔍 Intelligent Filtering System
+### 🔍 **Advanced Filtering & Joining**
 - **Simple Mode**: Point-and-click filtering with intuitive controls
 - **Advanced Mode**: Pandas query builder for complex conditions
-- **Multi-Type Support**: Text (with regex), numeric, and date filtering
-- **Real-time Results**: Instant feedback on data filtering
+- **Dataset Joining**: Merge multiple datasets with compatibility checking
+- Real-time filter results with persistent state
 
-### 📈 Interactive Visualizations
+### 🔧 **Feature Engineering Pipeline**
+- **Numerical transformations**: Log, square root, standardization, scaling
+- **ML-ready features**: Quantile binning, outlier handling
+- **Interactive transformation** with preview capabilities
+- Seamless integration with analysis pipeline
+
+### 📊 **Interactive Visualizations**
 - Bar charts, line charts, scatter plots with color/size mapping
-- Time series analysis with aggregation options
-- Statistical distributions and correlation heatmaps
-- Interactive hover data and drill-down capabilities
+- Time series analysis and correlation heatmaps
+- **Always reflects filtered data** - no disconnects
+- Interactive hover data and export-ready graphics
 
-### 📊 Advanced Analytics
-- Descriptive statistics and group-by analysis
-- Missing data analysis and data quality reporting
-- Multi-column aggregations with custom functions
-- Export capabilities for filtered data and insights
+### 📈 **Deep Analytics**
+- Descriptive statistics and distribution analysis
+- Group-by analysis and missing data reporting
+- Data quality checks with actionable insights
+- Comprehensive data preview and exploration
 
-## 🛠️ Installation
+### 💾 **Comprehensive Export System**
+- Filtered datasets in multiple formats
+- Statistical summaries and data reports
+- Filter information and metadata export
+- All analytics combined for complete documentation
 
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
+## 🛠️ Installation & Setup
 
-### Setup
 ```bash
 # Clone the repository
 git clone https://github.com/FotopoulosGeorge/insightstream-bi
@@ -52,92 +61,55 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Run the application
-streamlit run dashboard.py
+streamlit run main_dashboard.py
 ```
 
 The dashboard will be available at `http://localhost:8501`
 
-## 📋 Usage Guide
+## 📁 **Project Structure**
 
-### Getting Started
-1. **Upload Data**: Use the sidebar to upload one or more CSV files
-2. **Join Data** (optional): If multiple files, join them using the data joining interface
-3. **Filter Data**: Apply filters using either Simple or Advanced mode
-4. **Visualize**: Select chart types and configure visualizations
-5. **Analyze**: Review summary statistics and insights
-6. **Export**: Download filtered data and analysis results
-
-### Advanced Features
-
-#### Multi-File Joining
-- Upload multiple related datasets
-- Select join keys and join types
-- Preview results before committing
-
-#### Advanced Filtering
-**Simple Mode:**
-- Categorical: Multi-select or regex patterns
-- Numeric: Range sliders or conditional operators
-- Dates: Calendar-based date range selection
-
-**Advanced Mode:**
-- Write pandas query expressions
-- Use complex boolean logic
-- Reference examples for common patterns
-
-#### Query Examples
-```python
-# Numeric conditions
-sales > 1000 and quantity >= 5
-
-# Text patterns
-category.str.contains('electronics', case=False)
-
-# Date ranges
-date >= '2023-01-01' and date.dt.month.isin([1,2,3])
-
-# Combined conditions
-(revenue > 10000) or (region == 'North' and sales > 5000)
+```
+insightstream/
+├── dashboard.py           # Main orchestrator
+├── data_filter.py             # Filtering & joining logic
+├── data_visualizer.py         # Chart generation
+├── data_statistics.py         # Statistical analysis
+├── data_preview.py            # Data exploration
+├── data_exporter.py           # Export functionality
+├── feature_engineering.py     # Core feature engineering 
+├── requirements.txt           # Dependencies
+└── README.md                  # This file
 ```
 
-## 🏗️ Technical Architecture
+## 🎯 **Quick Start Guide**
 
-### Core Technologies
-- **Frontend**: Streamlit for interactive web interface
-- **Data Processing**: Pandas for data manipulation and analysis
-- **Visualization**: Plotly for interactive charts and graphs
-- **Performance**: PyArrow for optimized CSV processing
+1. **Upload Data**: Use sidebar to upload CSV files
+2. **Filter Tab**: Apply filters or join multiple datasets
+3. **Feature Engineering Tab**: Transform data for ML analysis
+4. **Visualize Tab**: Create interactive charts from processed data
+5. **Statistics Tab**: Generate insights and summaries
+6. **Preview Tab**: Explore data quality and structure
+7. **Export Tab**: Download results in various formats
 
-### Key Components
-- **Session State Management**: Persistent data across user interactions
-- **Data Caching**: Optimized performance for large datasets
+## 🔧 **Technical Highlights**
+
+- **Session State Management**: Persistent data across all modules
+- **Independent Module Design**: No variable scope conflicts
+- **Real-time Data Flow**: Filtering → Feature Engineering → Visualization → Export
 - **Error Handling**: Robust validation and user feedback
-- **Responsive Design**: Clean, intuitive user interface
+- **Performance Optimized**: Efficient data processing for large datasets
 
-## 📊 Performance Specifications
+## 🔮 **Machine Learning Ready**
 
-- **File Size**: Supports CSV files up to 200MB
-- **Data Processing**: Handles datasets with 100K+ rows efficiently
-- **Memory Management**: Optimized caching and data structures
-- **Response Time**: Sub-second filtering and visualization updates
+InsightStream is designed as a complete **ML preprocessing pipeline**:
+- Data cleaning and quality checks
+- Feature engineering and transformation
+- Statistical analysis and insights
+- Export ML-ready datasets
 
-## 🔮 Future Enhancements
+Perfect foundation for data science projects and model development.
 
-### Machine Learning Integration
-- Predictive analytics and forecasting models
-- Customer segmentation and clustering analysis
-- Anomaly detection and outlier identification
-- Automated feature engineering and insights
-
-### Enhanced Capabilities
-- Database connectivity (SQL, MongoDB)
-- Real-time data streaming
-- Custom dashboard templates
-- Collaborative features and sharing
-
-## 🤝 Contributing
-
-Contributions are welcome! Here's how to get started:
+## 🤝 **Contributing**
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -145,38 +117,7 @@ Contributions are welcome! Here's how to get started:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 Development Notes
-
-### Code Structure
-```
-insightstream/
-├── dashboard.py          # Main application file
-├── requirements.txt      # Python dependencies
-└── README.md            # Project documentation
-```
-
-### Testing
-```bash
-# Run basic functionality test
-streamlit run test_streamlit.py
-
-# Test with sample data
-# Upload sample CSV files to verify all features
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-- **White Screen**: Check terminal for import errors, verify Python version 3.8+
-- **Port Conflicts**: Use `streamlit run dashboard.py --server.port 8502`
-- **Package Issues**: Try `pip install --upgrade streamlit`
-
-### Browser Compatibility
-- Recommended: Chrome, Firefox, Safari (latest versions)
-- JavaScript must be enabled
-- Cookies and local storage should be allowed
-
-## 📄 License
+## 📄 **License**
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 

@@ -1,4 +1,5 @@
 # feature_engineering.py
+import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -12,7 +13,158 @@ class FeatureEngineer:
         self.original_columns = list(df.columns)
         self.new_features = []
         self._column_cache = {}
-    
+    # Add these methods to your existing feature_engineering.py
+
+    # Replace your incomplete render_feature_engineering_tab method in feature_engineering.py with this complete version:
+
+    def render_feature_engineering_tab(self):
+        """
+        Render the complete feature engineering tab UI
+        """
+        st.header("🔧 **Feature Engineering**")
+        st.markdown("*Transform your data to improve machine learning model performance*")
+        
+        # Show current data info
+        data_col1, data_col2, data_col3, data_col4 = st.columns(4)
+        
+        with data_col1:
+            st.metric("Original Features", len(self.original_columns))
+        with data_col2:
+            st.metric("Current Features", len(self.df.columns))
+        with data_col3:
+            st.metric("New Features", len(self.new_features))
+        with data_col4:
+            st.metric("Data Points", len(self.df))
+        
+        st.markdown("---")
+        
+        # Feature engineering technique selection
+        fe_technique = st.selectbox(
+            "**Select Technique:**",
+            ["🔢 Numerical Transformations", "🔍 Feature Summary"],
+            key="fe_technique"
+        )
+        
+        st.markdown("---")
+        
+        if fe_technique == "🔢 Numerical Transformations":
+            st.subheader("🔢 Numerical Transformations")
+            
+            column_info = self.get_column_info()
+            numeric_cols = column_info['numeric']
+            
+            if not numeric_cols:
+                st.warning("No numeric columns available for transformation")
+            else:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    selected_col = st.selectbox("Select column:", numeric_cols, key="fe_col")
+                    transform_type = st.selectbox("Transformation:", 
+                                                self.get_available_numerical_transforms(), key="fe_transform")
+                
+                with col2:
+                    info = self.get_transform_info(transform_type)
+                    st.info(f"**{transform_type}:** {info['description']}")
+                    
+                    # Handle special parameters
+                    kwargs = {}
+                    if transform_type == "Quantile Binning":
+                        kwargs['n_bins'] = st.slider("Number of bins:", 2, 20, 5, key="fe_bins")
+                    
+                    new_name = st.text_input("New column name:", 
+                                            value=f"{selected_col}_{transform_type.lower().replace(' ', '_')}", 
+                                            key="fe_new_name")
+                
+                if st.button("🔧 Apply Transformation", key="fe_apply"):
+                    try:
+                        created_col = self.apply_numerical_transform(selected_col, transform_type, new_name, **kwargs)
+                        st.success(f"✅ Created feature: {created_col}")
+                        
+                        # Show preview of new feature
+                        if len(self.df.columns) >= 2:
+                            preview_cols = [selected_col, created_col]
+                            preview_df = self.df[preview_cols].head(10)
+                            st.dataframe(preview_df, use_container_width=True)
+                        
+                        # Update working data automatically
+                        st.session_state.working_df = self.df.copy()
+                        st.info("💡 Feature added to working data! Check other tabs to see it.")
+                        
+                    except ValueError as e:
+                        st.error(f"❌ {str(e)}")
+        
+        elif fe_technique == "🔍 Feature Summary":
+            st.subheader("🔍 Feature Engineering Summary")
+            
+            # Get feature summary
+            summary = self.get_feature_summary()
+            
+            # Display metrics
+            summary_col1, summary_col2, summary_col3 = st.columns(3)
+            
+            with summary_col1:
+                st.metric("Original Features", summary['original_features'])
+            with summary_col2:
+                st.metric("New Features", summary['new_features'])
+            with summary_col3:
+                st.metric("Total Features", summary['total_features'])
+            
+            # Show new features list
+            if summary['new_features'] > 0:
+                st.subheader("🆕 New Features Created")
+                
+                new_features_df = pd.DataFrame({
+                    'Feature Name': summary['feature_list'],
+                    'Data Type': [str(self.df[col].dtype) for col in summary['feature_list']],
+                    'Non-Null Count': [self.df[col].count() for col in summary['feature_list']]
+                })
+                
+                st.dataframe(new_features_df, use_container_width=True)
+                
+                # Show sample of new features
+                if st.checkbox("Show sample data with new features", key="show_new_features_sample"):
+                    # Show original columns + new features
+                    sample_cols = self.original_columns[:3] + summary['feature_list']
+                    available_cols = [col for col in sample_cols if col in self.df.columns]
+                    if available_cols:
+                        sample_df = self.df[available_cols].head(10)
+                        st.dataframe(sample_df, use_container_width=True)
+            else:
+                st.info("No new features created yet. Use numerical transformations to create features.")
+        
+        # Apply changes section
+        if len(self.new_features) > 0:
+            st.markdown("---")
+            apply_col1, apply_col2 = st.columns(2)
+            
+            with apply_col1:
+                if st.button("✅ **Update Working Data**", type="primary", key="fe_apply_working"):
+                    # Update the working dataframe in session state
+                    st.session_state.working_df = self.df.copy()
+                    st.success(f"✅ Applied {len(self.new_features)} new features to working data!")
+                    st.info("💡 Switch to other tabs to see the new features in visualizations and exports")
+            
+            with apply_col2:
+                if st.button("🔄 **Reset Features**", key="fe_reset"):
+                    # Reset to original data but keep the current working data structure
+                    current_data = st.session_state.working_df.copy()
+                    # Remove only the new features, keep original + any filters
+                    cols_to_keep = [col for col in current_data.columns if col not in self.new_features]
+                    if cols_to_keep:
+                        reset_data = current_data[cols_to_keep]
+                        st.session_state.fe_handler = FeatureEngineer(reset_data)
+                        st.success("🔄 Reset to original features")
+                        st.rerun()
+    # Add this helper method too:
+    def get_current_data_from_session():
+        """Static method to get current data from session state"""
+        if 'working_df' in st.session_state and st.session_state.working_df is not None:
+            return st.session_state.working_df.copy()
+        elif 'base_df' in st.session_state and st.session_state.base_df is not None:
+            return st.session_state.base_df.copy()
+        else:
+            return pd.DataFrame()
     # Numerical transformations
     def apply_numerical_transform(self, column, transform_type, new_col_name=None, **kwargs):
         """

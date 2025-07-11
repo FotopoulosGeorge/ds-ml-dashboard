@@ -14,7 +14,7 @@ from feature_engineering import FeatureEngineer
 
 # Page configuration
 st.set_page_config(
-    page_title="InsightStream - BI Dashboard",
+    page_title="InsightStream - Modular BI Dashboard",
     page_icon="📊",
     layout="wide"
 )
@@ -25,7 +25,7 @@ if 'datasets' not in st.session_state:
 
 # Header
 st.title("📊 InsightStream")
-st.markdown("** Business Intelligence Dashboard** • Upload, Filter, Analyze, Visualize")
+st.markdown("**Modular Business Intelligence Dashboard** • Upload, Filter, Analyze, Visualize")
 
 # Sidebar for file upload and controls
 st.sidebar.header("📁 Data Management")
@@ -152,13 +152,8 @@ if st.session_state.datasets:
     
     # =================== TAB 1: FILTERING ===================
     with tab1:
-        # Initialize the filter module
+        # Initialize the filter module if not exists
         if 'data_filter' not in st.session_state:
-            st.session_state.data_filter = DataFilter(st.session_state.base_df)
-        
-        # Check if we need to reinitialize for new dataset
-        if (len(st.session_state.data_filter.original_df) != len(st.session_state.base_df) or
-            list(st.session_state.data_filter.original_df.columns) != list(st.session_state.base_df.columns)):
             st.session_state.data_filter = DataFilter(st.session_state.base_df)
         
         # Render the filtering UI
@@ -169,6 +164,13 @@ if st.session_state.datasets:
             st.session_state.working_df = filtered_data.copy()
             filter_info = st.session_state.data_filter.get_filter_info()
             st.session_state.active_filters = [filter_info] if filter_info['active'] else []
+            
+            # Don't force rerun for joins - let user navigate naturally
+            join_applied = any("Joined" in detail for detail in filter_info.get('filters_applied', []))
+            if not join_applied:
+                # Only show navigation hint for regular filters
+                if len(filtered_data) != len(st.session_state.base_df):
+                    st.info("💡 **Filters applied!** Switch to other tabs to see filtered results")
         else:
             # Check if we should clear filters
             if len(st.session_state.active_filters) > 0:
@@ -190,65 +192,28 @@ if st.session_state.datasets:
         
         # Render the statistics tab
         statistics.render_statistics_tab()
-
-
+    
     # =================== TAB 4: FEATURE ENGINEERING ===================
     with tab4:
-        st.header("🔧 **Feature Engineering**")
-        
         # Get current data
         current_data = st.session_state.working_df.copy()
         
-        # Initialize FeatureEngineer directly
-        if 'fe_handler' not in st.session_state:
-            st.session_state.fe_handler = FeatureEngineer(current_data)
-        
-        # Check if data changed
-        if not st.session_state.fe_handler.df.equals(current_data):
-            st.session_state.fe_handler = FeatureEngineer(current_data)
-        
-        fe_handler = st.session_state.fe_handler
-        
-        # UI code directly here - no wrapper needed
-        column_info = fe_handler.get_column_info()
-        numeric_cols = column_info['numeric']
-        
-        if numeric_cols:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                selected_col = st.selectbox("Select column:", numeric_cols)
-                transform_type = st.selectbox("Transformation:", 
-                                            fe_handler.get_available_numerical_transforms())
-            
-            with col2:
-                info = fe_handler.get_transform_info(transform_type)
-                st.info(f"**{transform_type}:** {info['description']}")
-                
-                new_name = st.text_input("New column name:", 
-                                        value=f"{selected_col}_{transform_type.lower().replace(' ', '_')}")
-            
-            if st.button("🔧 Apply Transformation"):
-                try:
-                    created_col = fe_handler.apply_numerical_transform(
-                        selected_col, transform_type, new_name
-                    )
-                    st.success(f"✅ Created feature: {created_col}")
-                    # Update working data
-                    st.session_state.working_df = fe_handler.df.copy()
-                except ValueError as e:
-                    st.error(f"❌ {str(e)}")
+        # Initialize or update FeatureEngineer
+        if ('fe_handler' not in st.session_state or 
+            len(st.session_state.fe_handler.df) != len(current_data)):
+            st.session_state.fe_handler = FeatureEngineer(current_data)    
+        st.session_state.fe_handler.render_feature_engineering_tab()
     
-    # =================== TAB 4: PREVIEW ===================
-    with tab4:
+    # =================== TAB 5: PREVIEW ===================
+    with tab5:
         # Initialize the preview module
         preview = DataPreview()
         
         # Render the preview tab
         preview.render_preview_tab()
     
-    # =================== TAB 5: EXPORT ===================
-    with tab5:
+    # =================== TAB 6: EXPORT ===================
+    with tab6:
         # Initialize the exporter module
         exporter = DataExporter()
         
@@ -278,10 +243,10 @@ else:
     
     with col2:
         st.markdown("""
-        ### 📊 **Interactive Visualizations**
-        - Multiple chart types
-        - Dynamic data binding
-        - Export-ready graphics
+        ### 🔧 **Feature Engineering**
+        - Transform numerical data
+        - Create ML-ready features  
+        - Statistical transformations
         """)
     
     with col3:
@@ -296,9 +261,10 @@ else:
         st.markdown("""
         **🧩 Modular Components:**
         
-        - **`data_filter.py`** - Independent filtering logic
+        - **`data_filter.py`** - Independent filtering logic with dataset joining
         - **`data_visualizer.py`** - Chart generation and display  
         - **`data_statistics.py`** - Statistical analysis and insights
+        - **`feature_engineering_tab.py`** - ML feature transformation pipeline
         - **`data_preview.py`** - Data exploration and quality checks
         - **`data_exporter.py`** - Export functionality for all formats
         
@@ -314,7 +280,7 @@ else:
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: #666; font-size: 14px;'>"
-    "Built with ❤️ using Streamlit • <strong>InsightStream v0.3 - Modular</strong>"
+    "Built with ❤️ using Streamlit • <strong>InsightStream v3.1 - Enhanced</strong>"
     "</div>", 
     unsafe_allow_html=True
 )
