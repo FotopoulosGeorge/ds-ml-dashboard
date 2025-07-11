@@ -211,9 +211,15 @@ if st.session_state.datasets:
         
         # Quick metrics (always visible)
         metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+
+        is_filtered = len(st.session_state.get('active_filters', [])) > 0
+        original_count = len(df) if not is_filtered else st.session_state.active_filters[0]['original_count']
         
         with metric_col1:
-            st.metric("📊 **Total Rows**", f"{len(df):,}")
+            if is_filtered:
+                st.metric("📊 **Total Rows**", f"{len(df):,}", delta=f"{len(df) - original_count:,} filtered")
+            else:
+                st.metric("📊 **Total Rows**", f"{len(df):,}")
         with metric_col2:
             st.metric("📋 **Columns**", len(df.columns))
         with metric_col3:
@@ -223,7 +229,31 @@ if st.session_state.datasets:
             missing_count = df.isnull().sum().sum()
             st.metric("❓ **Missing**", f"{missing_count:,}")
         
+        if st.session_state.get('active_filters', []):
+            filter_info = st.session_state.active_filters[0]
+            
+            st.markdown("---")
+            
+            # Create filter summary bar
+            filter_col1, filter_col2 = st.columns([4, 1])
+            
+            with filter_col1:
+                reduction_pct = ((filter_info['original_count'] - filter_info['count']) / filter_info['original_count'] * 100)
+                
+                st.markdown(f"""
+                🔍 **Active Filter:** {filter_info['type']} • 
+                Showing **{filter_info['count']:,}** of **{filter_info['original_count']:,}** rows 
+                ({reduction_pct:.1f}% filtered)
+                """)
+            
+            with filter_col2:
+                if st.button("❌ Clear All Filters", key="clear_filters"):
+                    st.session_state.active_filters = []
+                    st.rerun()
+
         st.markdown("---")
+
+
         
         # Data preview (collapsible)
         with st.expander("📋 **Data Preview** - Explore Your Data", expanded=False):
@@ -303,6 +333,9 @@ if st.session_state.datasets:
         with st.expander("🔍 **Advanced Filtering** - Focus Your Analysis", expanded=False):
             st.markdown("*Filter data using simple controls or advanced queries*")
             
+            if 'active_filters' not in st.session_state:
+                st.session_state.active_filters = []
+
             # Filter type selection
             filter_type = st.radio(
                 "Choose filter mode:",
@@ -311,6 +344,19 @@ if st.session_state.datasets:
             )
             
             filtered_df = df.copy()
+
+            # Update active filters based on what was applied
+            if len(filtered_df) != len(df):
+                # Store filter info - you'll populate this based on your filter type
+                filter_info = {
+                    'type': filter_type,  # "🎛️ Simple Filters" or "⚡ Query Builder"
+                    'count': len(filtered_df),
+                    'original_count': len(df),
+                    'details': []  # Will hold specific filter descriptions
+                }
+                st.session_state.active_filters = [filter_info]  # Replace with current
+            else:
+                st.session_state.active_filters = []  # No filters active
             
             if filter_type == "🎛️ Simple Filters":
                 filter_columns = st.multiselect(
