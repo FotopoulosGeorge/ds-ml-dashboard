@@ -16,10 +16,12 @@ scipy>=1.10.0          # Scientific computing
 seaborn>=0.12.0        # Statistical visualizations
 matplotlib>=3.7.0      # Additional plotting
 
-# Advanced ML 
-xgboost>=1.7.0       # Gradient boosting
-lightgbm>=4.0.0      # Light gradient boosting
+# Pretrained Models & Advanced ML
 prophet>=1.1.0       # Time series forecasting
+textblob>=0.17.0     # Text analysis and sentiment
+xgboost>=1.7.0       # Gradient boosting (optional)
+lightgbm>=4.0.0      # Light gradient boosting (optional)
+mlxtend>=0.22.0      # Association rules and pattern mining (optional)
 
 # Performance & Utilities
 pyarrow>=12.0.0        # Faster CSV processing

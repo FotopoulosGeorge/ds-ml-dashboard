@@ -13,6 +13,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from .ml_evaluator import MLEvaluator
 from .ml_utils import MLUtils
+from .pretrained.time_series import TimeSeriesForecaster
+from .pretrained.anomaly_detection import AnomalyDetector
 
 class MLTrainer:
     """
@@ -76,6 +78,8 @@ class MLTrainer:
             [
                 "🎯 Supervised Learning (Classification/Regression)",
                 "🔍 Unsupervised Learning (Clustering)",
+                "📈 Time Series Forecasting",
+                "🚨 Anomaly Detection",  
                 "📊 Model Comparison Dashboard",
                 "🔮 Make Predictions",
                 "💾 Model Management"
@@ -96,6 +100,12 @@ class MLTrainer:
                 self._prediction_interface()
             elif ml_task == "💾 Model Management":
                 self._model_management_interface()
+            elif ml_task == "📈 Time Series Forecasting":
+                ts_forecaster = TimeSeriesForecaster()
+                ts_forecaster.render_time_series_tab(current_data)
+            elif ml_task == "🚨 Anomaly Detection":
+                anomaly_detector = AnomalyDetector()
+                anomaly_detector.render_anomaly_detection_tab(current_data)
                 
         except Exception as e:
             st.error(f"❌ ML Error: {str(e)}")
@@ -374,7 +384,12 @@ class MLTrainer:
         # Model type selection
         prediction_type = st.radio(
             "**Select Prediction Type:**",
-            ["🎯 Supervised Predictions (Classification/Regression)", "🔍 Cluster Assignment"],
+            [
+                "🎯 Supervised Predictions (Classification/Regression)", 
+                "🔍 Cluster Assignment",
+                "📈 Time Series Forecast",
+                "🚨 Anomaly Detection"
+            ],
             horizontal=True,
             key="prediction_type_select"
         )
