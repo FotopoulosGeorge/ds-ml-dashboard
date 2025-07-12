@@ -1,5 +1,6 @@
 # src/ml/ml_trainer.py
 import streamlit as st
+import os
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -76,7 +77,8 @@ class MLTrainer:
                 "🎯 Supervised Learning (Classification/Regression)",
                 "🔍 Unsupervised Learning (Clustering)",
                 "📊 Model Comparison Dashboard",
-                "🔮 Make Predictions"
+                "🔮 Make Predictions",
+                "💾 Model Management"
             ],
             key="ml_task_selection"
         )
@@ -92,6 +94,8 @@ class MLTrainer:
                 self._model_comparison_dashboard()
             elif ml_task == "🔮 Make Predictions":
                 self._prediction_interface()
+            elif ml_task == "💾 Model Management":
+                self._model_management_interface()
                 
         except Exception as e:
             st.error(f"❌ ML Error: {str(e)}")
@@ -286,6 +290,33 @@ class MLTrainer:
                     
                     # Visualize clusters
                     self.evaluator.visualize_clusters(cluster_info)
+
+                    st.markdown("---")
+                    save_col1, save_col2 = st.columns(2)
+
+                    with save_col1:
+                        if st.button("💾 **Save Clustering Model**", key="save_clustering_model"):
+                            try:
+                                model_name = f"clustering_{cluster_id}"
+                                filepath = self.utils.save_model(
+                                    model=kmeans, 
+                                    model_name=model_name,
+                                    model_info=cluster_info
+                                )
+                                st.success(f"✅ Model saved to: {filepath}")
+                                st.info("💡 Saved models can be loaded later from the Model Management section")
+                            except Exception as e:
+                                st.error(f"❌ Failed to save model: {str(e)}")
+
+                    with save_col2:
+                        # Show model info
+                        st.info(f"""
+                        **Model Details:**
+                        • Algorithm: K-Means
+                        • Clusters: {n_clusters}
+                        • Features: {len(selected_features)}
+                        • Samples: {len(X_clustered)}
+                        """)
                     
                 except Exception as e:
                     st.error(f"Clustering failed: {str(e)}")
@@ -347,3 +378,90 @@ class MLTrainer:
         if selected_model_id:
             model_info = supervised_models[selected_model_id]
             self.evaluator.generate_prediction_interface(model_info)
+
+    def _model_management_interface(self):
+        """Handle model loading and management"""
+        st.subheader("💾 Model Management")
+        
+        # Show session models
+        if st.session_state.trained_models:
+            st.subheader("🧠 Models in Current Session")
+            
+            session_models = []
+            for model_id, model_info in st.session_state.trained_models.items():
+                session_models.append({
+                    'Model ID': model_id,
+                    'Algorithm': model_info['algorithm'],
+                    'Type': model_info['problem_type'],
+                    'Features': len(model_info['features']),
+                    'Target': model_info.get('target', 'N/A')
+                })
+            
+            session_df = pd.DataFrame(session_models)
+            st.dataframe(session_df, use_container_width=True)
+        else:
+            st.info("No models in current session")
+        
+        st.markdown("---")
+        
+        # Show saved models
+        st.subheader("💿 Saved Models on Disk")
+        
+        try:
+            saved_models = self.utils.list_saved_models()
+            
+            if saved_models:
+                saved_models_df = pd.DataFrame([{
+                    'Filename': model['filename'],
+                    'Created': model['created'].strftime('%Y-%m-%d %H:%M'),
+                    'Size (MB)': f"{model['size_mb']:.2f}"
+                } for model in saved_models])
+                
+                st.dataframe(saved_models_df, use_container_width=True)
+                
+                # Model loading interface
+                st.subheader("📂 Load Saved Model")
+                
+                selected_file = st.selectbox(
+                    "Select model to load:",
+                    [model['filename'] for model in saved_models],
+                    key="load_model_select"
+                )
+                
+                load_col1, load_col2 = st.columns(2)
+                
+                with load_col1:
+                    if st.button("📂 **Load Model**", key="load_saved_model"):
+                        try:
+                            selected_model = next(m for m in saved_models if m['filename'] == selected_file)
+                            model, model_info = self.utils.load_model(selected_model['filepath'])
+                            
+                            # Add to session state
+                            loaded_model_id = f"loaded_{selected_file.replace('.joblib', '')}"
+                            model_info['model'] = model
+                            model_info['model_id'] = loaded_model_id
+                            
+                            st.session_state.trained_models[loaded_model_id] = model_info
+                            
+                            st.success(f"✅ Model loaded successfully as: {loaded_model_id}")
+                            st.info("💡 Model is now available in current session for predictions and analysis")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Failed to load model: {str(e)}")
+                
+                with load_col2:
+                    if st.button("🗑️ **Delete Selected**", key="delete_saved_model"):
+                        try:
+                            selected_model = next(m for m in saved_models if m['filename'] == selected_file)
+                            os.remove(selected_model['filepath'])
+                            st.success(f"✅ Deleted {selected_file}")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Failed to delete: {str(e)}")
+            
+            else:
+                st.info("No saved models found")
+                st.caption("💡 Train and save models to see them here")
+        
+        except Exception as e:
+            st.error(f"❌ Error accessing saved models: {str(e)}")
