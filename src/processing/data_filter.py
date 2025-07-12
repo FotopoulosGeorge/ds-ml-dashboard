@@ -399,59 +399,141 @@ class DataFilter:
         return df, False, ""
     
     def _query_builder(self):
-        """Handle query builder filtering"""
-        # Get column info
-        numeric_cols = self.original_df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = self.original_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        """Handle query builder filtering with  UI-based construction"""
+        st.subheader("⚡ Query Builder")
         
-        # Build query using UI components instead of free text
+        # Validate data exists
+        if self.original_df.empty:
+            st.warning("No data available for querying")
+            return self.original_df.copy(), False, []
+        
+        # Get column info 
+        try:
+            numeric_cols = self.original_df.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_cols = self.original_df.select_dtypes(include=['object', 'category']).columns.tolist()
+            all_cols = self.original_df.columns.tolist()
+        except Exception as e:
+            st.error(f"Error accessing column information: {str(e)}")
+            return self.original_df.copy(), False, []
+        
+        if not all_cols:
+            st.warning("No columns available for querying")
+            return self.original_df.copy(), False, []
+        
+        # Build query using UI components
         query_parts = []
         
         # Add multiple conditions
-        num_conditions = st.number_input("Number of conditions:", 1, 5, 1)
+        num_conditions = st.number_input("Number of conditions:", 1, 5, 1, key="query_num_conditions")
         
         for i in range(num_conditions):
             st.markdown(f"**Condition {i+1}:**")
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                column = st.selectbox(f"Column:", self.original_df.columns, key=f"col_{i}")
+                column = st.selectbox(
+                    f"Column:", 
+                    all_cols, 
+                    key=f"query_col_{i}"
+                )
             
             with col2:
-                if column in numeric_cols:
-                    operator = st.selectbox("Operator:", [">", "<", ">=", "<=", "==", "!="], key=f"op_{i}")
-                    value = st.number_input("Value:", key=f"val_{i}")
+                # Check column type and provide appropriate operators
+                if column and column in numeric_cols:
+                    operator = st.selectbox(
+                        "Operator:", 
+                        [">", "<", ">=", "<=", "==", "!="], 
+                        key=f"query_op_{i}"
+                    )
+                    value = st.number_input(
+                        "Value:", 
+                        key=f"query_val_{i}"
+                    )
+                    # Safe query construction for numeric
                     query_parts.append(f"`{column}` {operator} {value}")
+                    
+                elif column and column in categorical_cols:
+                    operator = st.selectbox(
+                        "Operator:", 
+                        ["==", "!=", "contains"], 
+                        key=f"query_op_{i}"
+                    )
+                    value = st.text_input(
+                        "Value:", 
+                        key=f"query_val_{i}"
+                    )
+                    
+                    # Safe query construction for categorical
+                    if value:  # Only add if value is provided
+                        if operator == "contains":
+                            # Escape user input safely
+                            escaped_value = value.replace("'", "\\'").replace('"', '\\"')
+                            query_parts.append(f"`{column}`.str.contains('{escaped_value}', case=False, na=False)")
+                        else:
+                            escaped_value = value.replace("'", "\\'").replace('"', '\\"')
+                            query_parts.append(f"`{column}` {operator} '{escaped_value}'")
+                
                 else:
-                    operator = st.selectbox("Operator:", ["==", "!=", "contains"], key=f"op_{i}")
-                    if operator == "contains":
-                        value = st.text_input("Value:", key=f"val_{i}")
-                        # Escape user input safely
-                        escaped_value = value.replace("'", "\\'").replace('"', '\\"')
-                        query_parts.append(f"`{column}`.str.contains('{escaped_value}', case=False, na=False)")
-                    else:
-                        value = st.text_input("Value:", key=f"val_{i}")
+                    # Fallback for other column types (datetime, etc.)
+                    st.info(f"Column type: {self.original_df[column].dtype if column else 'Unknown'}")
+                    operator = st.selectbox(
+                        "Operator:", 
+                        ["==", "!="], 
+                        key=f"query_op_{i}"
+                    )
+                    value = st.text_input(
+                        "Value:", 
+                        key=f"query_val_{i}"
+                    )
+                    if value:
                         escaped_value = value.replace("'", "\\'").replace('"', '\\"')
                         query_parts.append(f"`{column}` {operator} '{escaped_value}'")
             
             with col3:
                 if i < num_conditions - 1:
-                    logic = st.selectbox("Logic:", ["and", "or"], key=f"logic_{i}")
-                    query_parts.append(logic)
+                    logic = st.selectbox(
+                        "Logic:", 
+                        ["and", "or"], 
+                        key=f"query_logic_{i}"
+                    )
+                    if len(query_parts) > 0:  # Only add logic if we have a condition
+                        query_parts.append(logic)
         
-        # Show generated query 
+        # Show generated query (safe to display)
         if query_parts:
-            final_query = " ".join(query_parts)
-            st.code(final_query, language="python")
+            # Remove any trailing logic operators
+            if query_parts[-1] in ["and", "or"]:
+                query_parts.pop()
             
-            if st.button("🔍 Apply Safe Query"):
-                try:
-                    # This is now safe because we control the query construction
-                    filtered_df = self.original_df.query(final_query)
-                    st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
-                    return filtered_df, True, [f"Safe Query: {final_query}"]
-                except Exception as e:
-                    st.error(f"Query error: {str(e)}")
+            final_query = " ".join(query_parts)
+            
+            if final_query.strip():  # Only show if we have a real query
+                st.subheader("📋 Generated Query")
+                st.code(final_query, language="python")
+                
+                if st.button("🔍 **Apply Query**", key="apply_safe_query"):
+                    try:
+                        # This is now safe because we control the query construction
+                        filtered_df = self.original_df.query(final_query)
+                        st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
+                        return filtered_df, True, [f"Safe Query: {final_query}"]
+                    except Exception as e:
+                        st.error(f"Query error: {str(e)}")
+                        st.info("💡 Try adjusting your conditions or check data types")
+        
+        # Show example for guidance
+        with st.expander("💡 Query Builder Help"):
+            st.markdown("""
+            **How to use:**
+            1. Select number of conditions
+            2. For each condition, choose column, operator, and value
+            3. Use 'and'/'or' to combine conditions
+            
+            **Safe operators:**
+            - **Numeric**: >, <, >=, <=, ==, !=
+            - **Text**: ==, !=, contains
+            
+            """)
         
         return self.original_df.copy(), False, []
     
