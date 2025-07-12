@@ -400,40 +400,58 @@ class DataFilter:
     
     def _query_builder(self):
         """Handle query builder filtering"""
-        query_text = st.text_area(
-            "Write a pandas query:",
-            help="Example: sales > 1000 and category.str.contains('tech')",
-            placeholder="column_name > 100 and other_column == 'value'",
-            height=100
-        )
+        # Get column info
+        numeric_cols = self.original_df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = self.original_df.select_dtypes(include=['object', 'category']).columns.tolist()
         
-        if query_text:
-            try:
-                filtered_df = self.original_df.query(query_text)
-                st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
-                return filtered_df, True, [f"Query: {query_text}"]
-            except Exception as e:
-                st.error(f"Query error: {str(e)}")
-                return self.original_df.copy(), False, []
+        # Build query using UI components instead of free text
+        query_parts = []
         
-        # Query examples
-        with st.expander("💡 Query Examples"):
-            st.code("""
-# Numeric conditions
-sales > 1000 and quantity >= 5
-price.between(10, 100)
-
-# Text patterns  
-category.str.contains('electronics', case=False)
-name.str.startswith('A')
-
-# Date conditions
-date >= '2023-01-01'
-date.dt.year == 2023
-
-# Combined conditions
-(revenue > 10000) or (region == 'North')
-            """)
+        # Add multiple conditions
+        num_conditions = st.number_input("Number of conditions:", 1, 5, 1)
+        
+        for i in range(num_conditions):
+            st.markdown(f"**Condition {i+1}:**")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                column = st.selectbox(f"Column:", self.original_df.columns, key=f"col_{i}")
+            
+            with col2:
+                if column in numeric_cols:
+                    operator = st.selectbox("Operator:", [">", "<", ">=", "<=", "==", "!="], key=f"op_{i}")
+                    value = st.number_input("Value:", key=f"val_{i}")
+                    query_parts.append(f"`{column}` {operator} {value}")
+                else:
+                    operator = st.selectbox("Operator:", ["==", "!=", "contains"], key=f"op_{i}")
+                    if operator == "contains":
+                        value = st.text_input("Value:", key=f"val_{i}")
+                        # Escape user input safely
+                        escaped_value = value.replace("'", "\\'").replace('"', '\\"')
+                        query_parts.append(f"`{column}`.str.contains('{escaped_value}', case=False, na=False)")
+                    else:
+                        value = st.text_input("Value:", key=f"val_{i}")
+                        escaped_value = value.replace("'", "\\'").replace('"', '\\"')
+                        query_parts.append(f"`{column}` {operator} '{escaped_value}'")
+            
+            with col3:
+                if i < num_conditions - 1:
+                    logic = st.selectbox("Logic:", ["and", "or"], key=f"logic_{i}")
+                    query_parts.append(logic)
+        
+        # Show generated query 
+        if query_parts:
+            final_query = " ".join(query_parts)
+            st.code(final_query, language="python")
+            
+            if st.button("🔍 Apply Safe Query"):
+                try:
+                    # This is now safe because we control the query construction
+                    filtered_df = self.original_df.query(final_query)
+                    st.success(f"✅ Query applied: {len(filtered_df):,} rows returned")
+                    return filtered_df, True, [f"Safe Query: {final_query}"]
+                except Exception as e:
+                    st.error(f"Query error: {str(e)}")
         
         return self.original_df.copy(), False, []
     
