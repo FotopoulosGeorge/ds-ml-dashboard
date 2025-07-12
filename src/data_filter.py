@@ -277,18 +277,105 @@ class DataFilter:
         return df, False, ""
     
     def _handle_numeric_filter(self, df, col):
-        """Handle numeric column filtering"""
+        """Enhanced numeric column filtering with synchronized slider and manual input"""
         min_val, max_val = float(self.original_df[col].min()), float(self.original_df[col].max())
-        selected_range = st.slider(
-            "Value range:",
-            min_value=min_val,
-            max_value=max_val,
-            value=(min_val, max_val),
-            key=f"range_{col}"
+        
+        col_info1, col_info2, col_info3 = st.columns(3)
+        with col_info1:
+            st.metric("Min Value", f"{min_val:.2f}")
+        with col_info2:
+            st.metric("Max Value", f"{max_val:.2f}")
+        with col_info3:
+            unique_count = self.original_df[col].nunique()
+            st.metric("Unique Values", unique_count)
+
+        # Input method selection
+        filter_method = st.radio(
+            "Filter method:",
+            ["🎛️ Slider", "📝 Manual Input", "🔄 Both"],
+            horizontal=True,
+            key=f"method_{col}"
         )
-        if selected_range != (min_val, max_val):
-            df = df[(df[col] >= selected_range[0]) & (df[col] <= selected_range[1])]
-            return df, True, f"{col}: {selected_range[0]} to {selected_range[1]}"
+        
+        if filter_method == "🎛️ Slider":
+            selected_range = st.slider(
+                "Value range:",
+                min_value=min_val,
+                max_value=max_val,
+                value=(min_val, max_val),
+                key=f"range_{col}"
+            )
+            final_min, final_max = selected_range
+        
+        elif filter_method == "📝 Manual Input":
+            input_col1, input_col2 = st.columns(2)
+            with input_col1:
+                final_min = st.number_input(
+                    "Minimum:",
+                    value=min_val,
+                    min_value=min_val,
+                    max_value=max_val,
+                    key=f"manual_min_{col}",
+                    format="%.4f"
+                )
+            with input_col2:
+                final_max = st.number_input(
+                    "Maximum:",
+                    value=max_val,
+                    min_value=min_val,
+                    max_value=max_val,
+                    key=f"manual_max_{col}",
+                    format="%.4f"
+                )
+        
+        else:  # Both method
+            st.write("**Slider:**")
+            selected_range = st.slider(
+                "Quick selection:",
+                min_value=min_val,
+                max_value=max_val,
+                value=(min_val, max_val),
+                key=f"range_{col}"
+            )
+            
+            st.write("**Fine-tune with manual input:**")
+            input_col1, input_col2 = st.columns(2)
+            with input_col1:
+                final_min = st.number_input(
+                    "Exact minimum:",
+                    value=float(selected_range[0]),
+                    min_value=min_val,
+                    max_value=max_val,
+                    key=f"manual_min_{col}",
+                    format="%.4f"
+                )
+            with input_col2:
+                final_max = st.number_input(
+                    "Exact maximum:",
+                    value=float(selected_range[1]),
+                    min_value=min_val,
+                    max_value=max_val,
+                    key=f"manual_max_{col}",
+                    format="%.4f"
+                )
+        
+        # Validation and filtering
+        if final_min > final_max:
+            st.error(f"❌ Minimum ({final_min}) cannot be greater than maximum ({final_max})")
+            return df, False, ""
+        
+        # Apply filter if values changed
+        if (final_min != min_val or final_max != max_val):
+            filtered_df = df[(df[col] >= final_min) & (df[col] <= final_max)]
+            
+            # Show filter summary
+            rows_before = len(df)
+            rows_after = len(filtered_df)
+            reduction = ((rows_before - rows_after) / rows_before * 100) if rows_before > 0 else 0
+            
+            st.success(f"✅ Filter applied: {rows_after:,} rows ({reduction:.1f}% filtered)")
+            
+            return filtered_df, True, f"{col}: {final_min} to {final_max}"
         
         return df, False, ""
     
