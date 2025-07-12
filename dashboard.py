@@ -5,12 +5,12 @@ import numpy as np
 from datetime import datetime
 
 # Import all our modules
-from src.data_filter import DataFilter
-from src.data_visualizer import DataVisualizer  
-from src.data_statistics import DataStatistics
-from src.data_exporter import DataExporter
-from src.data_preview import DataPreview
-from src.feature_engineering import FeatureEngineer
+from src.processing.data_filter import DataFilter
+from src.analysis.data_visualizer import DataVisualizer  
+from src.analysis.data_statistics import DataStatistics
+from src.analysis.data_exporter import DataExporter
+from src.analysis.data_preview import DataPreview
+from src.processing.feature_engineering import FeatureEngineer
 from src.ml.ml_trainer import MLTrainer
 
 # Page configuration
