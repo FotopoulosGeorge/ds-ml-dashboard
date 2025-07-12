@@ -361,23 +361,199 @@ class MLTrainer:
         """Handle making predictions with trained models"""
         st.subheader("🔮 Make Predictions")
         
-        supervised_models = {k: v for k, v in st.session_state.trained_models.items() 
-                           if v['problem_type'] != 'clustering'}
-        
-        if not supervised_models:
+        if not st.session_state.trained_models:
             st.info("🤖 No trained models available for predictions. Train a model first!")
             return
         
-        # Model selection
-        selected_model_id = st.selectbox(
-            "**Select Model:**",
-            list(supervised_models.keys()),
-            key="prediction_model"
+        # Separate models by type for better organization
+        supervised_models = {k: v for k, v in st.session_state.trained_models.items() 
+                        if v['problem_type'] in ['classification', 'regression']}
+        clustering_models = {k: v for k, v in st.session_state.trained_models.items() 
+                        if v['problem_type'] == 'clustering'}
+        
+        # Model type selection
+        prediction_type = st.radio(
+            "**Select Prediction Type:**",
+            ["🎯 Supervised Predictions (Classification/Regression)", "🔍 Cluster Assignment"],
+            horizontal=True,
+            key="prediction_type_select"
         )
         
-        if selected_model_id:
-            model_info = supervised_models[selected_model_id]
-            self.evaluator.generate_prediction_interface(model_info)
+        if prediction_type == "🎯 Supervised Predictions (Classification/Regression)":
+            if not supervised_models:
+                st.info("🤖 No supervised learning models available. Train a classification or regression model first!")
+                return
+            
+            # Model selection for supervised learning
+            selected_model_id = st.selectbox(
+                "**Select Model:**",
+                list(supervised_models.keys()),
+                key="supervised_prediction_model"
+            )
+            
+            if selected_model_id:
+                model_info = supervised_models[selected_model_id]
+                self.evaluator.generate_prediction_interface(model_info)
+        
+        elif prediction_type == "🔍 Cluster Assignment":
+            if not clustering_models:
+                st.info("🤖 No clustering models available. Train a clustering model first!")
+                return
+            
+            # Model selection for clustering
+            selected_model_id = st.selectbox(
+                "**Select Clustering Model:**",
+                list(clustering_models.keys()),
+                key="clustering_prediction_model"
+            )
+            
+            if selected_model_id:
+                model_info = clustering_models[selected_model_id]
+                self._generate_clustering_prediction_interface(model_info)
+
+    def _generate_clustering_prediction_interface(self, model_info):
+        """Generate interface for cluster assignment predictions"""
+        st.subheader(f"🔍 Cluster Assignment - {model_info['algorithm']}")
+        
+        model = model_info['model']
+        features = model_info['features']
+        n_clusters = model_info['n_clusters']
+        
+        st.markdown(f"**Features:** {', '.join(features)}")
+        st.markdown(f"**Number of Clusters:** {n_clusters}")
+        
+        # Input method selection
+        input_method = st.radio(
+            "**Input Method:**",
+            ["📝 Manual Input", "📁 Upload CSV"],
+            horizontal=True,
+            key="clustering_prediction_input_method"
+        )
+        
+        if input_method == "📝 Manual Input":
+            # Create input fields for each feature
+            st.subheader("Enter Feature Values:")
+            
+            input_values = {}
+            input_cols = st.columns(min(3, len(features)))
+            
+            for i, feature in enumerate(features):
+                with input_cols[i % 3]:
+                    input_values[feature] = st.number_input(
+                        f"**{feature}:**",
+                        key=f"cluster_pred_input_{feature}",
+                        format="%.4f"
+                    )
+            
+            if st.button("🔍 **Predict Cluster**", key="make_cluster_prediction"):
+                try:
+                    # Create input array
+                    input_array = np.array([[input_values[feature] for feature in features]])
+                    
+                    # Make prediction
+                    predicted_cluster = model.predict(input_array)[0]
+                    
+                    # Get distance to all cluster centers
+                    distances = model.transform(input_array)[0]
+                    
+                    # Display result
+                    st.success(f"🎯 **Predicted Cluster:** {predicted_cluster}")
+                    
+                    # Show distances to all clusters
+                    st.subheader("📊 Distance to Cluster Centers:")
+                    distance_col1, distance_col2 = st.columns(2)
+                    
+                    with distance_col1:
+                        for i, distance in enumerate(distances):
+                            if i == predicted_cluster:
+                                st.metric(f"🎯 Cluster {i} (Assigned)", f"{distance:.4f}")
+                            else:
+                                st.metric(f"Cluster {i}", f"{distance:.4f}")
+                    
+                    with distance_col2:
+                        # Visualize distances
+                        distance_df = pd.DataFrame({
+                            'Cluster': [f"Cluster {i}" for i in range(len(distances))],
+                            'Distance': distances,
+                            'Assigned': [i == predicted_cluster for i in range(len(distances))]
+                        })
+                        
+                        fig = px.bar(
+                            distance_df, 
+                            x='Cluster', 
+                            y='Distance',
+                            color='Assigned',
+                            title='Distance to Each Cluster Center',
+                            color_discrete_map={True: 'green', False: 'lightblue'}
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                except Exception as e:
+                    st.error(f"Cluster prediction failed: {str(e)}")
+        
+        elif input_method == "📁 Upload CSV":
+            uploaded_file = st.file_uploader(
+                "Upload CSV file with feature values:",
+                type=['csv'],
+                key="clustering_prediction_csv_upload"
+            )
+            
+            if uploaded_file is not None:
+                try:
+                    # Read uploaded file
+                    new_data = pd.read_csv(uploaded_file)
+                    
+                    st.subheader("📋 Uploaded Data Preview:")
+                    st.dataframe(new_data.head(), use_container_width=True)
+                    
+                    # Check if all required features are present
+                    missing_features = set(features) - set(new_data.columns)
+                    
+                    if missing_features:
+                        st.error(f"❌ Missing features: {', '.join(missing_features)}")
+                    else:
+                        if st.button("🔍 **Assign Clusters**", key="make_batch_cluster_predictions"):
+                            try:
+                                # Make predictions
+                                X_new = new_data[features]
+                                predicted_clusters = model.predict(X_new)
+                                distances = model.transform(X_new)
+                                
+                                # Add predictions to dataframe
+                                result_df = new_data.copy()
+                                result_df['Predicted_Cluster'] = predicted_clusters
+                                
+                                # Add distances to nearest cluster center
+                                result_df['Distance_to_Center'] = [distances[i][predicted_clusters[i]] 
+                                                                for i in range(len(predicted_clusters))]
+                                
+                                st.subheader("📊 Cluster Assignment Results:")
+                                st.dataframe(result_df, use_container_width=True)
+                                
+                                # Show cluster distribution
+                                cluster_counts = pd.DataFrame(predicted_clusters, columns=['Cluster']).value_counts().reset_index()
+                                cluster_counts.columns = ['Cluster', 'Count']
+                                
+                                st.subheader("📈 Cluster Distribution:")
+                                fig = px.pie(cluster_counts, values='Count', names='Cluster', 
+                                        title='Distribution of Predicted Clusters')
+                                st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Download predictions
+                                csv = result_df.to_csv(index=False)
+                                st.download_button(
+                                    label="📥 **Download Cluster Assignments**",
+                                    data=csv,
+                                    file_name=f"cluster_predictions_{model_info['model_id']}.csv",
+                                    mime="text/csv",
+                                    use_container_width=True
+                                )
+                            
+                            except Exception as e:
+                                st.error(f"Batch cluster assignment failed: {str(e)}")
+                
+                except Exception as e:
+                    st.error(f"Failed to read CSV: {str(e)}")
 
     def _model_management_interface(self):
         """Handle model loading and management"""
