@@ -1,113 +1,104 @@
-# 📊 InsightStream - Modular BI Dashboard
+# 📊 InsightStream - Full-Stack Data Science Platform
 
-A powerful, modular Business Intelligence dashboard built with Streamlit that enables users to upload, join, filter, transform, and visualize data with enterprise-level features.
+A comprehensive data science platform built with Streamlit that takes you from raw data to trained ML models. Upload, clean, engineer features, and build machine learning models - all in one unified interface.
 
 ## 🚀 Key Features
 
 ### 🏗️ **Modular Architecture**
-- **Independent modules** for each major function
-- **Clean data flow** through session state management
-- **No scope issues** - each module works independently
-- **Easy to extend** - add new features without breaking existing ones
+- **Clean separation** of data processing, feature engineering, and ML components
+- **Session state management** for seamless data flow across all modules
+- **Easy to extend** - add new algorithms or features without breaking existing functionality
 
-### 📁 **Multi-File Data Management**
-- Upload multiple CSV files simultaneously
-- Smart data type detection with automatic date parsing
-- **Dataset joining** with flexible join types and automatic type conversion
-- Easy dataset switching and management
+### 📁 **Complete Data Pipeline**
+- **Multi-file upload** with automatic data type detection
+- **Smart dataset joining** with type compatibility checking
+- **Advanced filtering** with both UI controls and pandas query builder
+- **Data quality assessment** with actionable insights
 
-### 🔍 **Advanced Filtering & Joining**
-- **Simple Mode**: Point-and-click filtering with intuitive controls
-- **Advanced Mode**: Pandas query builder for complex conditions
-- **Dataset Joining**: Merge multiple datasets with compatibility checking
-- Real-time filter results with persistent state
+### 🔧 **Comprehensive Feature Engineering**
+- **Numerical transformations**: scaling, normalization, log transforms, binning
+- **Text feature extraction**: length, word count, character analysis
+- **Date/time features**: seasonality, trends, time-based indicators  
+- **Categorical encoding**: one-hot, label, frequency, target encoding
+- **Advanced features**: interactions, ratios, outlier detection
 
-### 🔧 **Feature Engineering Pipeline**
-- **Numerical transformations**: Log, square root, standardization, scaling
-- **ML-ready features**: Quantile binning, outlier handling
-- **Interactive transformation** with preview capabilities
-- Seamless integration with analysis pipeline
+### 🤖 **Machine Learning Suite**
+- **Supervised learning**: classification and regression with 6+ algorithms
+- **Unsupervised learning**: K-means clustering with interactive visualization
+- **Model evaluation**: comprehensive metrics, ROC curves, feature importance
+- **Model comparison**: side-by-side performance analysis
+- **Prediction interface**: single predictions and batch processing
+- **Model persistence**: save and load trained models
 
-### 📊 **Interactive Visualizations**
-- Bar charts, line charts, scatter plots with color/size mapping
-- Time series analysis and correlation heatmaps
-- **Always reflects filtered data** - no disconnects
-- Interactive hover data and export-ready graphics
-
-### 📈 **Deep Analytics**
-- Descriptive statistics and distribution analysis
-- Group-by analysis and missing data reporting
-- Data quality checks with actionable insights
-- Comprehensive data preview and exploration
-
-### 💾 **Comprehensive Export System**
-- Filtered datasets in multiple formats
-- Statistical summaries and data reports
-- Filter information and metadata export
-- All analytics combined for complete documentation
+### 📊 **Interactive Analytics**
+- **Rich visualizations**: scatter plots, heatmaps, time series, cluster plots
+- **Statistical analysis**: distributions, correlations, group-by operations
+- **Export capabilities**: processed datasets, models, and analysis reports
 
 ## 🛠️ Installation & Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/FotopoulosGeorge/insightstream-bi
+git clone https://github.com/yourusername/insightstream
 cd insightstream
 
-# Create virtual environment (recommended)
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies  
 pip install -r requirements.txt
 
 # Run the application
-streamlit run main_dashboard.py
+streamlit run dashboard.py
 ```
 
-The dashboard will be available at `http://localhost:8501`
-
-## 📁 **Project Structure**
+## 📁 Project Structure
 
 ```
 insightstream/
-├── dashboard.py           # Main orchestrator
-├── data_filter.py             # Filtering & joining logic
-├── data_visualizer.py         # Chart generation
-├── data_statistics.py         # Statistical analysis
-├── data_preview.py            # Data exploration
-├── data_exporter.py           # Export functionality
-├── feature_engineering.py     # Core feature engineering 
-├── requirements.txt           # Dependencies
-└── README.md                  # This file
+├── dashboard.py                    # Main application orchestrator
+├── src/
+│   ├── data_filter.py             # Data filtering and joining
+│   ├── data_visualizer.py         # Interactive visualizations
+│   ├── data_statistics.py         # Statistical analysis
+│   ├── data_preview.py            # Data quality and exploration
+│   ├── data_exporter.py           # Export functionality
+│   ├── feature_engineering.py     # Feature transformation pipeline
+│   └── ml/                        # Machine Learning module
+│       ├── ml_trainer.py          # ML training interface
+│       ├── ml_evaluator.py        # Model evaluation and metrics
+│       ├── ml_utils.py            # ML utilities and helpers
+│       └── models/                # Saved models (auto-created)
+├── requirements.txt               # Dependencies
+└── README.md
 ```
 
-## 🎯 **Quick Start Guide**
+## 🎯 Workflow
 
-1. **Upload Data**: Use sidebar to upload CSV files
-2. **Filter Tab**: Apply filters or join multiple datasets
-3. **Feature Engineering Tab**: Transform data for ML analysis
-4. **Visualize Tab**: Create interactive charts from processed data
-5. **Statistics Tab**: Generate insights and summaries
-6. **Preview Tab**: Explore data quality and structure
-7. **Export Tab**: Download results in various formats
+1. **📁 Upload** - Load CSV files with automatic data type detection
+2. **🔍 Filter** - Clean and join datasets using intuitive controls
+3. **🔧 Engineer** - Create ML-ready features with transformations
+4. **🤖 Train** - Build and compare machine learning models
+5. **📊 Analyze** - Evaluate performance with comprehensive metrics
+6. **🔮 Predict** - Make predictions on new data
+7. **💾 Export** - Download models, predictions, and analysis reports
 
-## 🔧 **Technical Highlights**
+## 🧠 Supported ML Algorithms
 
-- **Session State Management**: Persistent data across all modules
-- **Independent Module Design**: No variable scope conflicts
-- **Real-time Data Flow**: Filtering → Feature Engineering → Visualization → Export
-- **Error Handling**: Robust validation and user feedback
-- **Performance Optimized**: Efficient data processing for large datasets
+**Classification**: Logistic Regression, Random Forest, SVM, Decision Tree, KNN, Naive Bayes  
+**Regression**: Linear Regression, Random Forest, SVR, Decision Tree, KNN  
+**Clustering**: K-Means with interactive 2D/3D visualization
 
-## 🔮 **Machine Learning Ready**
+## 🔮 Advanced Features
 
-InsightStream is designed as a complete **ML preprocessing pipeline**:
-- Data cleaning and quality checks
-- Feature engineering and transformation
-- Statistical analysis and insights
-- Export ML-ready datasets
-
-Perfect foundation for data science projects and model development.
+- **Cross-validation** for robust model evaluation
+- **Feature importance** analysis and visualization  
+- **Automated problem type detection** (classification vs regression)
+- **Hyperparameter recommendations** with sensible defaults
+- **Model persistence** with metadata tracking
+- **Batch predictions** via CSV upload
+- **Interactive cluster visualization** in 2D and 3D
 
 ## 🤝 **Contributing**
 

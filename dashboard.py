@@ -11,6 +11,7 @@ from src.data_statistics import DataStatistics
 from src.data_exporter import DataExporter
 from src.data_preview import DataPreview
 from src.feature_engineering import FeatureEngineer
+from src.ml.ml_trainer import MLTrainer
 
 # Page configuration
 st.set_page_config(
@@ -141,13 +142,14 @@ if st.session_state.datasets:
     st.markdown("---")
     
     # =================== CREATE TABS ===================
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "🔍 Filter Data", 
         "📊 Visualize", 
         "📈 Statistics", 
         "🔧 Feature Engineering",
         "🧹 Preview",
-        "💾 Export"
+        "💾 Export",
+        "🤖 Machine Learning" 
     ])
     
     # =================== TAB 1: FILTERING ===================
@@ -224,6 +226,14 @@ if st.session_state.datasets:
         
         # Render the export tab
         exporter.render_export_tab()
+
+    # =================== TAB 7: MACHINE LEARNING ===================
+    with tab7:
+        # Initialize the machine learning module
+        ml_trainer = MLTrainer()
+        
+        # Render the machine learning tab
+        ml_trainer.render_ml_tab()
 
 else:
     # Welcome screen when no data is uploaded
