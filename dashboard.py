@@ -152,10 +152,15 @@ if st.session_state.datasets:
     
     # =================== TAB 1: FILTERING ===================
     with tab1:
-        # Initialize the filter module if not exists
-        if 'data_filter' not in st.session_state:
-            st.session_state.data_filter = DataFilter(st.session_state.base_df)
-        
+        # Intitialize or update DataFilter
+        current_working_data = st.session_state.working_df.copy() 
+
+        # Check if we need to reinitialize the filter (new columns added)
+        if ('data_filter' not in st.session_state or 
+            len(st.session_state.data_filter.original_df.columns) != len(current_working_data.columns) or
+            list(st.session_state.data_filter.original_df.columns) != list(current_working_data.columns)):
+            st.session_state.data_filter = DataFilter(current_working_data)
+            
         # Render the filtering UI
         filtered_data, filters_applied = st.session_state.data_filter.render_filter_ui()
         
