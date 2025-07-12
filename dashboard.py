@@ -5,12 +5,12 @@ import numpy as np
 from datetime import datetime
 
 # Import all our modules
-from data_filter import DataFilter
-from data_visualizer import DataVisualizer  
-from data_statistics import DataStatistics
-from data_exporter import DataExporter
-from data_preview import DataPreview
-from feature_engineering import FeatureEngineer
+from src.data_filter import DataFilter
+from src.data_visualizer import DataVisualizer  
+from src.data_statistics import DataStatistics
+from src.data_exporter import DataExporter
+from src.data_preview import DataPreview
+from src.feature_engineering import FeatureEngineer
 
 # Page configuration
 st.set_page_config(
@@ -160,7 +160,7 @@ if st.session_state.datasets:
             len(st.session_state.data_filter.original_df.columns) != len(current_working_data.columns) or
             list(st.session_state.data_filter.original_df.columns) != list(current_working_data.columns)):
             st.session_state.data_filter = DataFilter(current_working_data)
-            
+
         # Render the filtering UI
         filtered_data, filters_applied = st.session_state.data_filter.render_filter_ui()
         
