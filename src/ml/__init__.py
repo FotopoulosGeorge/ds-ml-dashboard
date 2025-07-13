@@ -1,6 +1,7 @@
 from .ml_trainer import MLTrainer
 from .ml_evaluator import MLEvaluator
 from .ml_utils import MLUtils
+from .automl import AutoMLEngine
 
 __version__ = "0.0.1"
 __author__ = "George Fotopoulos"
@@ -8,7 +9,8 @@ __author__ = "George Fotopoulos"
 __all__ = [
     'MLTrainer',
     'MLEvaluator', 
-    'MLUtils'
+    'MLUtils',
+    'AutoMLEngine'
 ]
 
 # Module metadata
@@ -32,6 +34,12 @@ ML_ALGORITHMS = {
         'K-Means',
         'DBSCAN',
         'Hierarchical Clustering'
+    ],
+    'automl': [
+        'Automated Model Selection',
+        'Hyperparameter Optimization',
+        'Auto Feature Selection',
+        'Auto Preprocessing'
     ]
 }
 

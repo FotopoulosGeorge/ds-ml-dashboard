@@ -1,6 +1,7 @@
 # src/ml/pretrained/__init__.py
 from .time_series import TimeSeriesForecaster
 from .anomaly_detection import AnomalyDetector
+from .pattern_mining import PatternMiner
 
 # todo
 # try:
@@ -9,18 +10,14 @@ from .anomaly_detection import AnomalyDetector
 # except ImportError:
 #     TEXT_ANALYSIS_AVAILABLE = False
 
-# try:
-#     from .pattern_mining import PatternMiner
-#     PATTERN_MINING_AVAILABLE = True
-# except ImportError:
-#     PATTERN_MINING_AVAILABLE = False
 
 __version__ = "1.0.0"
 __author__ = "George Fotopoulos"
 
 __all__ = [
     'TimeSeriesForecaster',
-    'AnomalyDetector'
+    'AnomalyDetector',
+    'PatternMiner'
 ]
 
 # todo
@@ -48,8 +45,10 @@ AVAILABLE_MODELS = {
         'Topic Modeling': 'Basic topic discovery'
     },
     'pattern_mining': {
-        'Association Rules': 'Market basket analysis',
-        'Frequent Patterns': 'Pattern discovery in transactions'
+        'Association Rules': 'Market basket analysis and item associations',
+        'Sequential Patterns': 'Time-ordered pattern discovery',
+        'Co-occurrence Analysis': 'Item relationship analysis',
+        'Frequent Itemsets': 'Apriori and FP-Growth algorithms'
     }
 }
 

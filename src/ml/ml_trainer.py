@@ -15,6 +15,8 @@ from .ml_evaluator import MLEvaluator
 from .ml_utils import MLUtils
 from .pretrained.time_series import TimeSeriesForecaster
 from .pretrained.anomaly_detection import AnomalyDetector
+from .automl import AutoMLEngine
+from .pretrained.pattern_mining import PatternMiner
 
 class MLTrainer:
     """
@@ -78,6 +80,8 @@ class MLTrainer:
             [
                 "🎯 Supervised Learning (Classification/Regression)",
                 "🔍 Unsupervised Learning (Clustering)",
+                "🤖 AutoML - Automated Machine Learning",
+                "🔗 Pattern Mining & Association Rules",
                 "📈 Time Series Forecasting",
                 "🚨 Anomaly Detection",  
                 "📊 Model Comparison Dashboard",
@@ -106,6 +110,12 @@ class MLTrainer:
             elif ml_task == "🚨 Anomaly Detection":
                 anomaly_detector = AnomalyDetector()
                 anomaly_detector.render_anomaly_detection_tab(current_data)
+            elif ml_task == "🤖 AutoML - Automated Machine Learning":
+                automl_engine = AutoMLEngine()
+                automl_engine.render_automl_tab(current_data)
+            elif ml_task == "🔗 Pattern Mining & Association Rules":
+                pattern_miner = PatternMiner()
+                pattern_miner.render_pattern_mining_tab(current_data)
                 
         except Exception as e:
             st.error(f"❌ ML Error: {str(e)}")
