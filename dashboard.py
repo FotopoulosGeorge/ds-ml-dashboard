@@ -55,9 +55,9 @@ if uploaded_files:
                     elif file_extension in ['xlsx', 'xls']:
                         # Handle Excel files
                         excel_file = pd.ExcelFile(file)
-                                                # If multiple sheets, let user choose or load all
+                                                
                         if len(excel_file.sheet_names) > 1:
-                            # For now, load the first sheet (can enhance this later)
+                            
                             df = pd.read_excel(file, sheet_name=0)
                             # Store sheet info for later use
                             df.attrs['excel_sheets'] = excel_file.sheet_names
