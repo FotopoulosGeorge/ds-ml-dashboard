@@ -12,6 +12,7 @@ from src.analysis.data_exporter import DataExporter
 from src.analysis.data_preview import DataPreview
 from src.processing.feature_engineering import FeatureEngineer
 from src.ml.ml_trainer import MLTrainer
+from src.processing.excel_handler import ExcelHandler
 
 # Page configuration
 st.set_page_config(
@@ -33,30 +34,64 @@ st.sidebar.header("📁 Data Management")
 
 # Multi-file upload
 uploaded_files = st.sidebar.file_uploader(
-    "Upload CSV Files",
-    type=['csv'],
+    "Upload Files",
+    type=['csv', 'xlsx', 'xls'],
     accept_multiple_files=True,
-    help="Upload one or more CSV files"
+    help= "Upload CSV, Excel (.xlsx), or legacy Excel (.xls) files"
 )
 
 # Load datasets
 if uploaded_files:
     for uploaded_file in uploaded_files:
         file_name = uploaded_file.name
+        file_extension = file_name.split('.')[-1].lower()
+
         if file_name not in st.session_state.datasets:
             @st.cache_data
-            def load_data(file):
-                df = pd.read_csv(file)
-                # Auto-detect and convert date columns
-                for col in df.columns:
-                    if df[col].dtype == 'object':
-                        try:
-                            df[col] = pd.to_datetime(df[col], infer_datetime_format=True)
-                        except:
-                            pass
-                return df
+            def load_data(file, file_extension):
+                try:
+                    if file_extension == 'csv':
+                        df = pd.read_csv(file)
+                    elif file_extension in ['xlsx', 'xls']:
+                        # Handle Excel files
+                        excel_file = pd.ExcelFile(file)
+                                                # If multiple sheets, let user choose or load all
+                        if len(excel_file.sheet_names) > 1:
+                            # For now, load the first sheet (can enhance this later)
+                            df = pd.read_excel(file, sheet_name=0)
+                            # Store sheet info for later use
+                            df.attrs['excel_sheets'] = excel_file.sheet_names
+                            df.attrs['selected_sheet'] = excel_file.sheet_names[0]
+                        else:
+                            df = pd.read_excel(file)
+
+                    # Auto-detect and convert date columns
+                    for col in df.columns:
+                        if df[col].dtype == 'object':
+                            try:
+                                df[col] = pd.to_datetime(df[col], infer_datetime_format=True)
+                            except:
+                                pass
+                    
+                    if file_extension in ['xlsx', 'xls']:
+                        df, sheet_name = ExcelHandler.handle_excel_upload(uploaded_file)
+                        if df is not None:
+                            df = ExcelHandler.auto_detect_data_types(df)
+                            st.session_state.datasets[f"{file_name}_{sheet_name}"] = df
+
+                    return df
+                
+                except Exception as e:
+                    st.error(f"❌ Error loading {file.name}: {str(e)}")
+                    return None
             
-            st.session_state.datasets[file_name] = load_data(uploaded_file)
+            
+
+            loaded_df = load_data(uploaded_file, file_extension)
+            if loaded_df is not None:
+                st.session_state.datasets[file_name] = loaded_df
+            
+            st.session_state.datasets[file_name] = load_data(uploaded_file, file_extension)
 
 # Dataset management sidebar
 if st.session_state.datasets:
@@ -66,6 +101,13 @@ if st.session_state.datasets:
         with st.sidebar.expander(f"{name}"):
             st.write(f"📏 **Shape:** {df.shape[0]:,} × {df.shape[1]}")
             st.write(f"💾 **Size:** {df.memory_usage(deep=True).sum() / 1024**2:.1f} MB")
+            
+            # Show Excel sheet info if available
+            if hasattr(df, 'attrs') and 'excel_sheets' in df.attrs:
+                st.write(f"📑 **Sheet:** {df.attrs['selected_sheet']}")
+                if len(df.attrs['excel_sheets']) > 1:
+                    st.caption(f"Other sheets: {', '.join([s for s in df.attrs['excel_sheets'] if s != df.attrs['selected_sheet']])}")
+
             if st.button(f"🗑️ Remove", key=f"remove_{name}"):
                 del st.session_state.datasets[name]
                 st.rerun()
