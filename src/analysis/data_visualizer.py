@@ -115,20 +115,61 @@ class DataVisualizer:
             st.warning("No columns available for bar chart")
             return None
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             x_axis = st.selectbox("**X-axis:**", columns['all'], key="bar_x")
         with col2:
             y_axis = st.selectbox("**Y-axis:**", columns['numeric'] or columns['all'], key="bar_y")
-        
+        with col3:
+            if (x_axis in columns['categorical'] and y_axis in columns['numeric']):
+                aggregation = st.selectbox(
+                    "**Aggregation:**", 
+                    ["mean", "sum", "count", "median", "min", "max"],
+                    index=0,  # Default to mean
+                    key="bar_agg",
+                    help="How to combine multiple values for each category"
+                )
+            else:
+                aggregation = None
+
+
         if x_axis and y_axis and x_axis in df.columns and y_axis in df.columns:
-            fig = px.bar(
-                df, 
-                x=x_axis, 
-                y=y_axis,
-                title=f"{y_axis} by {x_axis} (n={len(df):,})"
-            )
+            if (x_axis in columns['categorical'] and y_axis in columns['numeric'] and aggregation):
+                if aggregation == "count":
+                        agg_data = df.groupby(x_axis).size().reset_index(name='count')
+                        y_plot = 'count'
+                        title_suffix = f"(Count by {x_axis})"
+                else:
+                    agg_data = df.groupby(x_axis)[y_axis].agg(aggregation).reset_index()
+                    y_plot = y_axis
+                    title_suffix = f"({aggregation.title()} {y_axis} by {x_axis})"
+
+
+                fig = px.bar(
+                    agg_data, 
+                    x=x_axis, 
+                    y=y_plot,
+                    title=f"{title_suffix} (n={len(df):,} records)"
+                )
+
+                avg_value = agg_data[y_plot].mean() if y_plot in agg_data.columns else 0
+                fig.add_annotation(
+                    text=f"Avg: {avg_value:.2f}",
+                    xref="paper", yref="paper",
+                    x=0.02, y=0.98,
+                    showarrow=False,
+                    bgcolor="rgba(255,255,255,0.8)",
+                    bordercolor="gray",
+                    borderwidth=1
+                    )
+            else:
+                fig = px.bar(
+                    df, 
+                    x=x_axis, 
+                    y=y_axis,
+                    title=f"{y_axis} by {x_axis} (n={len(df):,})"
+                )
             return fig
         
         return None
@@ -139,20 +180,40 @@ class DataVisualizer:
             st.warning("No columns available for line chart")
             return None
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             x_axis = st.selectbox("**X-axis:**", columns['all'], key="line_x")
         with col2:
             y_axis = st.selectbox("**Y-axis:**", columns['numeric'] or columns['all'], key="line_y")
+        with col3:
+            if (x_axis in columns['categorical'] and y_axis in columns['numeric']):
+                aggregation = st.selectbox(
+                    "**Aggregation:**", 
+                    ["mean", "sum", "median", "min", "max"],
+                    index=0,
+                    key="line_agg"
+                )
+            else:
+                aggregation = None
         
         if x_axis and y_axis and x_axis in df.columns and y_axis in df.columns:
-            fig = px.line(
-                df, 
-                x=x_axis, 
-                y=y_axis,
-                title=f"{y_axis} over {x_axis} (n={len(df):,})"
-            )
+            if (x_axis in columns['categorical'] and y_axis in columns['numeric'] and aggregation):
+                agg_data = df.groupby(x_axis)[y_axis].agg(aggregation).reset_index()
+                title_suffix = f"({aggregation.title()} {y_axis} by {x_axis})"
+                fig = px.line(
+                    agg_data, 
+                    x=x_axis, 
+                    y=y_axis,
+                    title=f"{title_suffix} (n={len(df):,} records)"
+                )
+            else:
+                fig = px.line(
+                    df, 
+                    x=x_axis, 
+                    y=y_axis,
+                    title=f"{y_axis} over {x_axis} (n={len(df):,})"
+                )
             return fig
         
         return None
