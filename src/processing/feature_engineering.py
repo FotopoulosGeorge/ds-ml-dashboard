@@ -40,6 +40,7 @@ class FeatureEngineer:
             "**Select Technique:**",
             [
                 "🔢 Numerical Transformations", 
+                "🧮 Column Operations",
                 "📝 Text Features",
                 "📅 Date Features", 
                 "🏷️ Categorical Encoding",
@@ -97,6 +98,9 @@ class FeatureEngineer:
                     except ValueError as e:
                         st.error(f"❌ {str(e)}")
         
+        elif fe_technique == "🧮 Column Operations":  # ← ADD THIS NEW SECTION
+            self._render_column_operations()
+
         elif fe_technique == "📝 Text Features":
             st.subheader("📝 Text Feature Extraction")
             
@@ -419,8 +423,165 @@ class FeatureEngineer:
         return info.get(transform_type, {"description": "No info available"})
        
         
-
-    
+    def _render_column_operations(self):
+        """
+        NEW METHOD: Render the column operations interface
+        """
+        st.subheader("🧮 Column Operations")
+        st.markdown("*Combine columns using mathematical operations*")
+        
+        column_info = self.get_column_info()
+        numeric_cols = column_info['numeric']
+        all_cols = column_info['all']
+        
+        if len(all_cols) < 2:
+            st.warning("Need at least 2 columns for operations")
+            return
+        
+        # Operation type selection
+        operation_type = st.selectbox(
+            "**Operation Type:**",
+            ["🔢 Numerical Operations", "📝 Text Combinations"],
+            key="operation_type"
+        )
+        
+        if operation_type == "🔢 Numerical Operations":
+            if len(numeric_cols) < 2:
+                st.warning("Need at least 2 numeric columns for numerical operations")
+                return
+                
+            # UI for numerical operations
+            op_col1, op_col2, op_col3 = st.columns(3)
+            
+            with op_col1:
+                col1 = st.selectbox("**First Column:**", numeric_cols, key="num_col1")
+            
+            with op_col2:
+                operation = st.selectbox(
+                    "**Operation:**",
+                    ["multiply", "add", "subtract", "divide"],
+                    format_func=lambda x: {
+                        "multiply": "Multiply (×)",
+                        "add": "Add (+)", 
+                        "subtract": "Subtract (-)",
+                        "divide": "Divide (÷)"
+                    }[x],
+                    key="num_operation"
+                )
+            
+            with op_col3:
+                col2 = st.selectbox("**Second Column:**", numeric_cols, key="num_col2")
+            
+            # New column name
+            default_name = f"{col1}_{operation}_{col2}"
+            new_col_name = st.text_input(
+                "**New Column Name:**",
+                value=default_name,
+                key="num_new_name"
+            )
+            
+            # Preview the operation
+            operation_symbols = {
+                "multiply": "×", "add": "+", "subtract": "-", "divide": "÷"
+            }
+            st.info(f"**Formula:** {new_col_name} = {col1} {operation_symbols[operation]} {col2}")
+            
+            if st.button("🧮 **Create Feature**", type="primary", key="create_numerical"):
+                try:
+                    created_feature = self.create_interaction_features(col1, col2, operation)
+                    # Rename if user specified different name
+                    if created_feature != new_col_name and new_col_name:
+                        self.df[new_col_name] = self.df[created_feature]
+                        self.df.drop(columns=[created_feature], inplace=True)
+                        # Update the new_features list
+                        if created_feature in self.new_features:
+                            self.new_features.remove(created_feature)
+                        if new_col_name not in self.new_features:
+                            self.new_features.append(new_col_name)
+                        created_feature = new_col_name
+                    
+                    st.success(f"✅ Created feature: **{created_feature}**")
+                    
+                    # Show preview
+                    preview_cols = [col1, col2, created_feature]
+                    preview_df = self.df[preview_cols].head(5)
+                    st.dataframe(preview_df, use_container_width=True)
+                    
+                    # Update working data
+                    st.session_state.working_df = self.df.copy()
+                    st.info("💡 Feature added to working data! Check other tabs to see it.")
+                    
+                except Exception as e:
+                    st.error(f"❌ Operation failed: {str(e)}")
+        
+        elif operation_type == "📝 Text Combinations":
+            # UI for text combinations
+            text_col1, text_col2 = st.columns(2)
+            
+            with text_col1:
+                col1 = st.selectbox("**First Column:**", all_cols, key="text_col1")
+            
+            with text_col2:
+                col2 = st.selectbox("**Second Column:**", all_cols, key="text_col2")
+            
+            # Separator and new name
+            separator_col, name_col = st.columns(2)
+            
+            with separator_col:
+                separator = st.text_input("**Separator:**", value="_", key="text_separator")
+            
+            with name_col:
+                default_name = f"{col1}_concat_{col2}"
+                new_col_name = st.text_input(
+                    "**New Column Name:**",
+                    value=default_name,
+                    key="text_new_name"
+                )
+            
+            # Preview
+            st.info(f"**Formula:** {new_col_name} = {col1} + '{separator}' + {col2}")
+            
+            if st.button("🔗 **Combine Columns**", type="primary", key="create_text"):
+                try:
+                    created_feature = self.create_interaction_features(col1, col2, "concat")
+                    
+                    # If user wants custom separator, recreate with custom separator
+                    if separator != "_":
+                        self.df[new_col_name] = (
+                            self.df[col1].astype(str) + separator + self.df[col2].astype(str)
+                        )
+                        # Remove the default one and update tracking
+                        if created_feature in self.df.columns:
+                            self.df.drop(columns=[created_feature], inplace=True)
+                        if created_feature in self.new_features:
+                            self.new_features.remove(created_feature)
+                        if new_col_name not in self.new_features:
+                            self.new_features.append(new_col_name)
+                        created_feature = new_col_name
+                    elif created_feature != new_col_name and new_col_name:
+                        # Just rename
+                        self.df[new_col_name] = self.df[created_feature]
+                        self.df.drop(columns=[created_feature], inplace=True)
+                        if created_feature in self.new_features:
+                            self.new_features.remove(created_feature)
+                        if new_col_name not in self.new_features:
+                            self.new_features.append(new_col_name)
+                        created_feature = new_col_name
+                    
+                    st.success(f"✅ Created feature: **{created_feature}**")
+                    
+                    # Show preview
+                    preview_cols = [col1, col2, created_feature]
+                    preview_df = self.df[preview_cols].head(5)
+                    st.dataframe(preview_df, use_container_width=True)
+                    
+                    # Update working data
+                    st.session_state.working_df = self.df.copy()
+                    st.info("💡 Feature added to working data! Check other tabs to see it.")
+                    
+                except Exception as e:
+                    st.error(f"❌ Combination failed: {str(e)}")
+        
     # Text feature extraction  
     def extract_text_features(self, column, features_list):
         """Extract text-based features from a text column"""
