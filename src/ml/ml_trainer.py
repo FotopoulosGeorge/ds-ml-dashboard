@@ -16,7 +16,7 @@ from .ml_utils import MLUtils
 from .pretrained.time_series import TimeSeriesForecaster
 from .pretrained.anomaly_detection import AnomalyDetector
 from .automl import AutoMLEngine
-from .pretrained.pattern_mining import PatternMiner
+#from .pretrained.pattern_mining import PatternMiner
 
 class MLTrainer:
     """

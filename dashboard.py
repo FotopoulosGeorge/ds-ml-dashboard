@@ -13,6 +13,7 @@ from src.analysis.data_preview import DataPreview
 from src.processing.feature_engineering import FeatureEngineer
 from src.ml.ml_trainer import MLTrainer
 from src.processing.excel_handler import ExcelHandler
+from src.demo.demo_datasets import DemoDatasets
 
 # Page configuration
 st.set_page_config(
@@ -21,78 +22,193 @@ st.set_page_config(
     layout="wide"
 )
 
+
+
 # Initialize session state
 if 'datasets' not in st.session_state:
     st.session_state.datasets = {}
+def show_deployment_banner():
+    """Show appropriate banner based on deployment mode"""
+    if DemoDatasets.is_deployed():
+        st.info("""
+        🌐 **Demo Mode Active** - This app is running on the cloud using curated test datasets.
+        Your privacy is protected as no personal data can be uploaded.
+        
+        💻 **Want to use your own data?** Download and run this app locally for full privacy and functionality.
+        """)
+    else:
+        st.success("""
+        💻 **Local Mode** - Your data stays completely private on your computer.
+        Upload any CSV/Excel files to explore the full functionality!
+        """)
 
+show_deployment_banner()
 # Header
 st.title("📊 InsightStream")
 st.markdown("**Modular Business Intelligence Dashboard** • Upload, Filter, Analyze, Visualize")
 
 # Sidebar for file upload and controls
-st.sidebar.header("📁 Data Management")
 
-# Multi-file upload
-uploaded_files = st.sidebar.file_uploader(
-    "Upload Files",
-    type=['csv', 'xlsx', 'xls'],
-    accept_multiple_files=True,
-    help= "Upload CSV, Excel (.xlsx), or legacy Excel (.xls) files"
-)
 
-# Load datasets
-if uploaded_files:
-    for uploaded_file in uploaded_files:
-        file_name = uploaded_file.name
-        file_extension = file_name.split('.')[-1].lower()
-
-        if file_name not in st.session_state.datasets:
-            @st.cache_data
-            def load_data(file, file_extension):
+def render_data_input_section():
+    """
+    Render data input section - either file upload (local) or dataset selection (deployed)
+    """
+    st.sidebar.header("📁 Data Management")
+    
+    # Check if app is deployed
+    is_deployed = DemoDatasets.is_deployed()
+    
+    if is_deployed:
+        # DEPLOYED MODE: Use demo datasets only
+        st.sidebar.info("🌐 **Demo Mode**: Using curated test datasets for privacy")
+        st.sidebar.markdown("*Your data stays safe - no uploads to cloud*")
+        
+        # Dataset selection
+        datasets_info = DemoDatasets.get_available_datasets()
+        dataset_names = list(datasets_info.keys())
+        
+        selected_dataset = st.sidebar.selectbox(
+            "📊 Select Demo Dataset:",
+            [""] + dataset_names,
+            help="Choose a dataset to explore all features safely"
+        )
+        
+        if selected_dataset:
+            # Show dataset info
+            info = datasets_info[selected_dataset]
+            with st.sidebar.expander(f"ℹ️ About {selected_dataset}"):
+                st.write(f"**Type:** {info['type']}")
+                st.write(f"**Samples:** {info['samples']:,}")
+                st.write(f"**Features:** {info['features']}")
+                st.write(f"**Target:** {info['target']}")
+                st.write(f"**Description:** {info['description']}")
+                st.write(f"**Use Cases:** {', '.join(info['use_cases'])}")
+            
+            if st.sidebar.button(f"📥 Load {selected_dataset}", type="primary"):
                 try:
-                    if file_extension == 'csv':
-                        df = pd.read_csv(file)
-                    elif file_extension in ['xlsx', 'xls']:
-                        # Handle Excel files
-                        excel_file = pd.ExcelFile(file)
-                                                
-                        if len(excel_file.sheet_names) > 1:
-                            
-                            df = pd.read_excel(file, sheet_name=0)
-                            # Store sheet info for later use
-                            df.attrs['excel_sheets'] = excel_file.sheet_names
-                            df.attrs['selected_sheet'] = excel_file.sheet_names[0]
-                        else:
-                            df = pd.read_excel(file)
-
-                    # Auto-detect and convert date columns
-                    for col in df.columns:
-                        if df[col].dtype == 'object':
-                            try:
-                                df[col] = pd.to_datetime(df[col], infer_datetime_format=True)
-                            except:
-                                pass
+                    df = DemoDatasets.load_dataset(selected_dataset)
+                    dataset_key = selected_dataset.replace(" ", "_").replace("🌸", "").replace("🍷", "").replace("🏠", "").replace("💊", "").replace("📈", "").replace("🛒", "").strip()
                     
-                    if file_extension in ['xlsx', 'xls']:
-                        df, sheet_name = ExcelHandler.handle_excel_upload(uploaded_file)
-                        if df is not None:
-                            df = ExcelHandler.auto_detect_data_types(df)
-                            st.session_state.datasets[f"{file_name}_{sheet_name}"] = df
-
-                    return df
-                
+                    # Store in session state
+                    if 'datasets' not in st.session_state:
+                        st.session_state.datasets = {}
+                    
+                    st.session_state.datasets[dataset_key] = df
+                    st.sidebar.success(f"✅ Loaded {selected_dataset}")
+                    st.rerun()
+                    
                 except Exception as e:
-                    st.error(f"❌ Error loading {file.name}: {str(e)}")
-                    return None
+                    st.sidebar.error(f"❌ Failed to load dataset: {str(e)}")
+        
+        # Show available features in demo mode
+        with st.sidebar.expander("🎯 What you can try"):
+            st.markdown("""
+            **🔬 Machine Learning:**
+            - Classification & Regression
+            - AutoML experiments  
+            - Clustering analysis
+            - Time series forecasting
             
+            **🔧 Data Processing:**
+            - Feature engineering
+            - Data filtering & joining
+            - Statistical analysis
+            - Data visualization
             
+            **🤖 Advanced Features:**
+            - Pattern mining
+            - Anomaly detection
+            - Model comparison
+            - Model persistence
+            """)
+    
+    else:
+        # LOCAL MODE: Allow file uploads
+        st.sidebar.success("💻 **Local Mode**: Upload your own data safely")
+        
+        # Original file upload code
+        uploaded_files = st.sidebar.file_uploader(
+            "Upload Files",
+            type=['csv', 'xlsx', 'xls'],
+            accept_multiple_files=True,
+            help="Upload CSV, Excel (.xlsx), or legacy Excel (.xls) files"
+        )
+        
+        # Process uploaded files
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                file_name = uploaded_file.name
+                file_extension = file_name.split('.')[-1].lower()
 
-            loaded_df = load_data(uploaded_file, file_extension)
-            if loaded_df is not None:
-                st.session_state.datasets[file_name] = loaded_df
-            
-            st.session_state.datasets[file_name] = load_data(uploaded_file, file_extension)
+                if file_name not in st.session_state.datasets:
+                    @st.cache_data
+                    def load_data(file, file_extension):
+                        try:
+                            if file_extension == 'csv':
+                                df = pd.read_csv(file)
+                            elif file_extension in ['xlsx', 'xls']:
+                                # Handle Excel files
+                                excel_file = pd.ExcelFile(file)
+                                                        
+                                if len(excel_file.sheet_names) > 1:
+                                    
+                                    df = pd.read_excel(file, sheet_name=0)
+                                    # Store sheet info for later use
+                                    df.attrs['excel_sheets'] = excel_file.sheet_names
+                                    df.attrs['selected_sheet'] = excel_file.sheet_names[0]
+                                else:
+                                    df = pd.read_excel(file)
 
+                            # Auto-detect and convert date columns
+                            for col in df.columns:
+                                if df[col].dtype == 'object':
+                                    try:
+                                        df[col] = pd.to_datetime(df[col], infer_datetime_format=True)
+                                    except:
+                                        pass
+                            
+                            if file_extension in ['xlsx', 'xls']:
+                                df, sheet_name = ExcelHandler.handle_excel_upload(uploaded_file)
+                                if df is not None:
+                                    df = ExcelHandler.auto_detect_data_types(df)
+                                    st.session_state.datasets[f"{file_name}_{sheet_name}"] = df
+
+                            return df
+                        
+                        except Exception as e:
+                            st.error(f"❌ Error loading {file.name}: {str(e)}")
+                            return None
+                    
+                    
+
+                    loaded_df = load_data(uploaded_file, file_extension)
+                    if loaded_df is not None:
+                        st.session_state.datasets[file_name] = loaded_df
+                    
+                    st.session_state.datasets[file_name] = load_data(uploaded_file, file_extension)
+        
+        # Show local mode benefits
+        with st.sidebar.expander("🔒 Local Mode Benefits"):
+            st.markdown("""
+            **🛡️ Complete Privacy:**
+            - Data never leaves your computer
+            - No cloud storage or processing
+            - Full GDPR compliance
+            
+            **📁 File Support:**
+            - CSV files
+            - Excel (.xlsx, .xls)  
+            - Multiple sheets
+            - Automatic type detection
+            
+            **🚀 Full Features:**
+            - All ML algorithms
+            - Custom data uploads
+            - Model saving/loading
+            - No usage limits
+            """)
+render_data_input_section()
 # Dataset management sidebar
 if st.session_state.datasets:
     st.sidebar.subheader("📋 Loaded Datasets")
