@@ -75,21 +75,38 @@ class MLTrainer:
         st.markdown("---")
         
         # ML workflow selection
-        ml_task = st.selectbox(
-            "**Select ML Task:**",
-            [
-                "🎯 Supervised Learning (Classification/Regression)",
-                "🔍 Unsupervised Learning (Clustering)",
-                "🤖 AutoML - Automated Machine Learning",
-                "🔗 Pattern Mining & Association Rules",
-                "📈 Time Series Forecasting",
-                "🚨 Anomaly Detection",  
-                "📊 Model Comparison Dashboard",
-                "🔮 Make Predictions",
-                "💾 Model Management"
-            ],
-            key="ml_task_selection"
+        workflow_category = st.radio(
+            "**What would you like to do?**",
+            ["🎯 Train New Models", "📊 Analyze Existing Models", "🔮 Use Trained Models"],
+            horizontal=True,
+            key="ml_workflow_category"
         )
+
+        if workflow_category == "🎯 Train New Models":
+            ml_task = st.selectbox(
+                "**Select Training Method:**",
+                [
+                    "🎯 Supervised Learning (Classification/Regression)",
+                    "🔍 Unsupervised Learning (Clustering)",
+                    "🤖 AutoML (Automated)",
+                    "📈 Time Series Forecasting", 
+                    "🚨 Anomaly Detection",
+                    "🔗 Pattern Mining"
+                ],
+                key="ml_training_task"
+            )
+        elif workflow_category == "📊 Analyze Existing Models":
+            ml_task = st.selectbox(
+                "**Select Analysis:**",
+                [
+                    "📊 Model Comparison Dashboard",
+                    "💾 Model Management",
+                    "📈 Performance Analysis"
+                ],
+                key="ml_analysis_task"
+            )
+        else:  # Use Trained Models
+            ml_task = "🔮 Make Predictions"
         
         st.markdown("---")
         
@@ -110,10 +127,10 @@ class MLTrainer:
             elif ml_task == "🚨 Anomaly Detection":
                 anomaly_detector = AnomalyDetector()
                 anomaly_detector.render_anomaly_detection_tab(current_data)
-            elif ml_task == "🤖 AutoML - Automated Machine Learning":
+            elif ml_task == "🤖 AutoML (Automated)":
                 automl_engine = AutoMLEngine()
                 automl_engine.render_automl_tab(current_data)
-            elif ml_task == "🔗 Pattern Mining & Association Rules":
+            elif ml_task == "🔗 Pattern Mining":
                 pattern_miner = PatternMiner()
                 pattern_miner.render_pattern_mining_tab(current_data)
                 
@@ -179,6 +196,13 @@ class MLTrainer:
             
             random_state = st.number_input("Random State:", value=42, key="random_state")
         
+        save_model = st.checkbox(
+            "💾 Save model to disk (recommended)", 
+            value=True, 
+            help="Saves model permanently so it won't be lost when session ends",
+            key="auto_save_model"
+        )
+
         # Training button
         if st.button("🚀 **Train Model**", type="primary", key="train_supervised"):
             with st.spinner('Training model...'):
@@ -201,7 +225,11 @@ class MLTrainer:
                     
                     # Train model
                     model_class = algorithms[selected_algorithm]
-                    model = model_class(random_state=random_state)
+                    try:
+                        model = model_class(random_state=random_state)
+                    except  TypeError:
+                        model = model_class()
+                        st.info(f"ℹ️ {selected_algorithm} doesn't use random_state parameter")
                     model.fit(X_train, y_train)
                     
                     # Store model and results
@@ -219,7 +247,18 @@ class MLTrainer:
                     }
                     
                     st.session_state.trained_models[model_id] = model_info
-                    
+                    if save_model:
+                        try:
+                            filepath = self.utils.save_model(model, model_id, model_info)
+                            st.success(f"✅ Model trained and saved! Model ID: {model_id}")
+                            st.info(f"💾 Saved to: {filepath}")
+                        except Exception as save_error:
+                            st.success(f"✅ Model trained! Model ID: {model_id}")
+                            st.warning(f"⚠️ Could not save to disk: {save_error}")
+                    else:
+                        st.success(f"✅ Model trained! Model ID: {model_id}")
+                        st.warning("⚠️ Model not saved - will be lost when session ends")
+
                     st.success(f"✅ Model trained successfully! Model ID: {model_id}")
                     
                     # Show evaluation
