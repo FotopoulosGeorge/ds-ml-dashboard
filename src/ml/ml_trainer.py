@@ -17,6 +17,7 @@ from .pretrained.time_series import TimeSeriesForecaster
 from .pretrained.anomaly_detection import AnomalyDetector
 from .automl import AutoMLEngine
 from .pretrained.pattern_mining import PatternMiner
+from src.demo.demo_datasets import DemoDatasets
 
 class MLTrainer:
     """
@@ -622,7 +623,7 @@ class MLTrainer:
     def _model_management_interface(self):
         """Handle model loading and management"""
         st.subheader("💾 Model Management")
-        
+        is_deployed = DemoDatasets.is_deployed()
         # Show session models
         if st.session_state.trained_models:
             st.subheader("🧠 Models in Current Session")
@@ -643,65 +644,80 @@ class MLTrainer:
             st.info("No models in current session")
         
         st.markdown("---")
-        
-        # Show saved models
-        st.subheader("💿 Saved Models on Disk")
-        
-        try:
-            saved_models = self.utils.list_saved_models()
+        # Handle saved models differently in demo vs local mode
+        if is_deployed:
+            # Demo mode: Explain limitations
+            st.subheader("💿 Model Persistence in Demo Mode")
+            st.info("""
+            🌐 **Demo Mode Limitations:**
+            - Models can't be permanently saved to cloud server
+            - Models exist only during your current session  
+            - Download model info as JSON for reference
+            - For full model saving/loading, run app locally
+            """)
             
-            if saved_models:
-                saved_models_df = pd.DataFrame([{
-                    'Filename': model['filename'],
-                    'Created': model['created'].strftime('%Y-%m-%d %H:%M'),
-                    'Size (MB)': f"{model['size_mb']:.2f}"
-                } for model in saved_models])
-                
-                st.dataframe(saved_models_df, use_container_width=True)
-                
-                # Model loading interface
-                st.subheader("📂 Load Saved Model")
-                
-                selected_file = st.selectbox(
-                    "Select model to load:",
-                    [model['filename'] for model in saved_models],
-                    key="load_model_select"
-                )
-                
-                load_col1, load_col2 = st.columns(2)
-                
-                with load_col1:
-                    if st.button("📂 **Load Model**", key="load_saved_model"):
-                        try:
-                            selected_model = next(m for m in saved_models if m['filename'] == selected_file)
-                            model, model_info = self.utils.load_model(selected_model['filepath'])
-                            
-                            # Add to session state
-                            loaded_model_id = f"loaded_{selected_file.replace('.joblib', '')}"
-                            model_info['model'] = model
-                            model_info['model_id'] = loaded_model_id
-                            
-                            st.session_state.trained_models[loaded_model_id] = model_info
-                            
-                            st.success(f"✅ Model loaded successfully as: {loaded_model_id}")
-                            st.info("💡 Model is now available in current session for predictions and analysis")
-                            
-                        except Exception as e:
-                            st.error(f"❌ Failed to load model: {str(e)}")
-                
-                with load_col2:
-                    if st.button("🗑️ **Delete Selected**", key="delete_saved_model"):
-                        try:
-                            selected_model = next(m for m in saved_models if m['filename'] == selected_file)
-                            os.remove(selected_model['filepath'])
-                            st.success(f"✅ Deleted {selected_file}")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Failed to delete: {str(e)}")
+            if st.session_state.trained_models:
+                st.markdown("**💡 Want to save these models permanently?**")
+                st.code("git clone [your-repo-url] && streamlit run dashboard.py")
+        else:
+            # Show saved models
+            st.subheader("💿 Saved Models on Disk")
             
-            else:
-                st.info("No saved models found")
-                st.caption("💡 Train and save models to see them here")
-        
-        except Exception as e:
-            st.error(f"❌ Error accessing saved models: {str(e)}")
+            try:
+                saved_models = self.utils.list_saved_models()
+                
+                if saved_models:
+                    saved_models_df = pd.DataFrame([{
+                        'Filename': model['filename'],
+                        'Created': model['created'].strftime('%Y-%m-%d %H:%M'),
+                        'Size (MB)': f"{model['size_mb']:.2f}"
+                    } for model in saved_models])
+                    
+                    st.dataframe(saved_models_df, use_container_width=True)
+                    
+                    # Model loading interface
+                    st.subheader("📂 Load Saved Model")
+                    
+                    selected_file = st.selectbox(
+                        "Select model to load:",
+                        [model['filename'] for model in saved_models],
+                        key="load_model_select"
+                    )
+                    
+                    load_col1, load_col2 = st.columns(2)
+                    
+                    with load_col1:
+                        if st.button("📂 **Load Model**", key="load_saved_model"):
+                            try:
+                                selected_model = next(m for m in saved_models if m['filename'] == selected_file)
+                                model, model_info = self.utils.load_model(selected_model['filepath'])
+                                
+                                # Add to session state
+                                loaded_model_id = f"loaded_{selected_file.replace('.joblib', '')}"
+                                model_info['model'] = model
+                                model_info['model_id'] = loaded_model_id
+                                
+                                st.session_state.trained_models[loaded_model_id] = model_info
+                                
+                                st.success(f"✅ Model loaded successfully as: {loaded_model_id}")
+                                st.info("💡 Model is now available in current session for predictions and analysis")
+                                
+                            except Exception as e:
+                                st.error(f"❌ Failed to load model: {str(e)}")
+                    
+                    with load_col2:
+                        if st.button("🗑️ **Delete Selected**", key="delete_saved_model"):
+                            try:
+                                selected_model = next(m for m in saved_models if m['filename'] == selected_file)
+                                os.remove(selected_model['filepath'])
+                                st.success(f"✅ Deleted {selected_file}")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Failed to delete: {str(e)}")
+                
+                else:
+                    st.info("No saved models found")
+                    st.caption("💡 Train and save models to see them here")
+            
+            except Exception as e:
+                st.error(f"❌ Error accessing saved models: {str(e)}")

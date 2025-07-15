@@ -13,6 +13,7 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from src.demo.demo_datasets import DemoDatasets
 
 class MLUtils:
     """
@@ -234,26 +235,66 @@ class MLUtils:
         # Create models directory if it doesn't exist
         models_dir = os.path.join('src', 'ml', 'models')
         os.makedirs(models_dir, exist_ok=True)
-        
+        from datetime import datetime
         # Generate filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{model_name}_{timestamp}.joblib"
         filepath = os.path.join(models_dir, filename)
+        # Check if in demo mode
+        if DemoDatasets.is_deployed():
+        # Demo mode: Show info but don't actually save
+            st.warning("🌐 **Demo Mode**: Models cannot be permanently saved on cloud deployment")
+            st.info("""
+            💡 **In Demo Mode:**
+            - Model is saved in session memory only
+            - Available for predictions during this session
+            - Download model info as backup
+            - For permanent saving, run app locally
+            """)
         
-        # Prepare data to save
-        save_data = {
-            'model': model,
-            'model_info': model_info,
-            'saved_at': datetime.now().isoformat(),
-            'sklearn_version': None  # Could add sklearn version check
-        }
-        
-        try:
-            # Save model
-            joblib.dump(save_data, filepath)
-            return filepath
-        except Exception as e:
-            raise Exception(f"Failed to save model: {str(e)}")
+        # Provide model info as downloadable content instead
+            if model_info:
+                import json
+                from datetime import datetime
+                
+                # Create model summary for download
+                model_summary = {
+                    'model_type': model_info.get('algorithm', 'Unknown'),
+                    'target': model_info.get('target', 'N/A'),
+                    'features': model_info.get('features', []),
+                    'problem_type': model_info.get('problem_type', 'Unknown'),
+                    'trained_on': 'Demo Dataset',
+                    'created_at': datetime.now().isoformat(),
+                    'note': 'This model was trained on demo data. To save actual model files, run the app locally.'
+                }
+                
+                model_json = json.dumps(model_summary, indent=2)
+                
+                st.download_button(
+                    label="📥 Download Model Info",
+                    data=model_json,
+                    file_name=f"{model_name}_info.json",
+                    mime="application/json",
+                    help="Download model information for reference"
+                )
+            
+            # Return a fake filepath for consistency
+            return f"demo_mode_{model_name}.joblib"
+        else:
+            # Prepare data to save
+            save_data = {
+                'model': model,
+                'model_info': model_info,
+                'saved_at': datetime.now().isoformat(),
+                'sklearn_version': None  # Could add sklearn version check
+            }
+            
+            try:
+                # Save model
+                joblib.dump(save_data, filepath)
+                return filepath
+            except Exception as e:
+                raise Exception(f"Failed to save model: {str(e)}")
     
     @staticmethod
     def load_model(filepath):
