@@ -1,15 +1,6 @@
 # 📊 InsightStream - Complete Data Science Platform
 
-Transform raw data into trained ML models with zero coding. Upload CSV files, engineer features, train algorithms, and make predictions - all through an intuitive web interface.
-
-## 🎯 Core Workflow
-
-**1. Upload Data** → **2. Process & Clean** → **3. Train Models** → **4. Make Predictions**
-
-- **📁 Data Input**: Multi-file CSV upload with automatic type detection
-- **🔧 Processing**: Filter, join, and engineer features for ML
-- **🤖 Training**: 15+ algorithms including time series and anomaly detection  
-- **🔮 Predictions**: Real-time predictions and batch processing
+**Transform CSV files into trained ML models with zero coding.** Upload data, engineer features, train algorithms, and make predictions through an intuitive web interface.
 
 ## 🚀 Quick Start
 
@@ -20,55 +11,54 @@ pip install -r requirements.txt
 streamlit run dashboard.py
 ```
 
-## 🛠️ What's Inside
+## ✨ Key Features
 
-### **Data Processing**
+**🔧 Data Processing**
 - Smart filtering with UI controls and pandas queries
-- Dataset joining with automatic type compatibility
+- Dataset joining with automatic type compatibility  
 - Feature engineering: scaling, encoding, text analysis, date features
-- Data quality assessment and cleaning recommendations
 
-### **Machine Learning**
-- **Supervised**: Classification & regression (6 algorithms)
+**🤖 Machine Learning**
+- **Supervised**: Classification & regression (6+ algorithms)
+- **AutoML**: Automated model selection and hyperparameter optimization
 - **Unsupervised**: K-means clustering with 3D visualization
 - **Time Series**: Prophet forecasting with seasonality analysis
 - **Anomaly Detection**: Isolation Forest and Local Outlier Factor
-- **Model Management**: Save, load, and compare trained models
+- **Pattern Mining**: Association rules and market basket analysis
 
-### **Analysis & Export**
+**📊 Analytics & Export**
 - Interactive visualizations with Plotly
 - Comprehensive model evaluation and metrics
-- Statistical analysis and data exploration
+- Statistical analysis and data quality reports
 - Export models, predictions, and reports
 
-## 📁 Architecture
+## 🎯 Perfect For
+
+- **Business Teams**: Sales forecasting, customer segmentation, anomaly detection
+- **Data Scientists**: Rapid prototyping, model comparison, feature engineering  
+- **Students**: Complete ML workflow demonstration and learning
+- **Organizations**: Shared analysis platform without coding requirements
+
+## 🏗️ Architecture
 
 ```
 src/
-├── processing/          # Data filtering and feature engineering
-├── analysis/           # Visualization, statistics, preview, export  
-└── ml/                # Machine learning and pretrained models
+├── processing/     # Data filtering and feature engineering
+├── analysis/       # Visualization, statistics, preview, export  
+└── ml/            # Machine learning and pretrained models
 ```
 
-## 🎯 Use Cases
-
-**Business Analytics**: Sales forecasting, customer segmentation, anomaly detection  
-**Data Science**: Rapid prototyping, model comparison, feature engineering  
-**Education**: Complete ML workflow demonstration and learning  
-**Teams**: Shared data analysis platform without coding requirements
-
-## 📈 Supported Models
-
-**Classification/Regression**: Logistic Regression, Random Forest, SVM, Decision Tree, KNN, Naive Bayes  
-**Time Series**: Prophet forecasting with trend and seasonality  
-**Anomaly Detection**: Isolation Forest, Local Outlier Factor  
-**Clustering**: K-Means with interactive visualization
-
-## 🔧 Requirements
+## 📋 Requirements
 
 - Python 3.8+
-- 8GB RAM recommended for large datasets
+- 8GB RAM (recommended for large datasets)
 - Modern web browser
+
+## 🔒 Privacy First
+
+- **Local Mode**: Your data never leaves your computer
+- **Demo Mode**: Safe cloud deployment with curated test datasets
+- Full GDPR compliance when running locally
 
 ## 📄 License
 
