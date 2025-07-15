@@ -27,25 +27,10 @@ st.set_page_config(
 # Initialize session state
 if 'datasets' not in st.session_state:
     st.session_state.datasets = {}
-def show_deployment_banner():
-    """Show appropriate banner based on deployment mode"""
-    if DemoDatasets.is_deployed():
-        st.info("""
-        🌐 **Demo Mode Active** - This app is running on the cloud using curated test datasets.
-        Your privacy is protected as no personal data can be uploaded.
-        
-        💻 **Want to use your own data?** Download and run this app locally for full privacy and functionality.
-        """)
-    else:
-        st.success("""
-        💻 **Local Mode** - Your data stays completely private on your computer.
-        Upload any CSV/Excel files to explore the full functionality!
-        """)
 
-show_deployment_banner()
 # Header
 st.title("📊 InsightStream")
-st.markdown("**Modular Business Intelligence Dashboard** • Upload, Filter, Analyze, Visualize")
+st.markdown("**Business Intelligence Dashboard** • Analyze, Visualize, Train, Predict")
 
 # Sidebar for file upload and controls
 
@@ -61,7 +46,7 @@ def render_data_input_section():
     
     if is_deployed:
         # DEPLOYED MODE: Use demo datasets only
-        st.sidebar.info("🌐 **Demo Mode**: Using curated test datasets for privacy")
+        st.sidebar.info("🌐 **Demo Mode**: Using curated test datasets for privacy. Download app for full version")
         st.sidebar.markdown("*Your data stays safe - no uploads to cloud*")
         
         # Dataset selection
