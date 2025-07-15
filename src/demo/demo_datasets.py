@@ -139,7 +139,6 @@ class DemoDatasets:
     @staticmethod
     def _load_california_housing():
         """Load California Housing dataset"""
-        # Using California housing dataset (ethical alternative to Boston housing)
         try:
             from sklearn.datasets import fetch_california_housing
             housing = fetch_california_housing()
