@@ -15,62 +15,6 @@ from src.ml.ml_trainer import MLTrainer
 from src.processing.excel_handler import ExcelHandler
 from src.demo.demo_datasets import DemoDatasets
 
-def debug_deployment_environment():
-    """Debug deployment detection"""
-    import os
-    import socket
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔧 Deployment Debug")
-    
-    # Check environment variables
-    env_vars = {
-        'STREAMLIT_SHARING': os.getenv('STREAMLIT_SHARING'),
-        'STREAMLIT_CLOUD': os.getenv('STREAMLIT_CLOUD'),
-        'DYNO': os.getenv('DYNO'),
-        'RENDER': os.getenv('RENDER'), 
-        'HEROKU': os.getenv('HEROKU'),
-        'RAILWAY_ENVIRONMENT': os.getenv('RAILWAY_ENVIRONMENT'),
-        'VERCEL': os.getenv('VERCEL'),
-        'CODESPACE_NAME': os.getenv('CODESPACE_NAME'),
-        'REPL_ID': os.getenv('REPL_ID'),
-        'SPACE_ID': os.getenv('SPACE_ID'),  # Hugging Face Spaces
-    }
-    
-    st.sidebar.write("**Environment Variables:**")
-    for key, value in env_vars.items():
-        if value:
-            st.sidebar.write(f"✅ {key}: {value}")
-        else:
-            st.sidebar.write(f"❌ {key}: None")
-    
-    # Check hostname
-    try:
-        hostname = socket.gethostname()
-        st.sidebar.write(f"**Hostname:** {hostname}")
-    except Exception as e:
-        st.sidebar.write(f"**Hostname Error:** {e}")
-    
-    # Check file system
-    try:
-        test_write = os.access('.', os.W_OK)
-        st.sidebar.write(f"**Can Write Files:** {test_write}")
-    except Exception as e:
-        st.sidebar.write(f"**File System Error:** {e}")
-    
-    # Current detection result
-    from src.demo.demo_datasets import DemoDatasets
-    is_deployed_result = DemoDatasets.is_deployed()
-    st.sidebar.write(f"**Current Detection:** {is_deployed_result}")
-    
-    # Platform info
-    import sys
-    st.sidebar.write(f"**Python Version:** {sys.version}")
-    st.sidebar.write(f"**Platform:** {sys.platform}")
-
-# Add this call temporarily in your main dashboard code
-debug_deployment_environment()
-
 # Page configuration
 st.set_page_config(
     page_title="InsightStream - Modular BI Dashboard",

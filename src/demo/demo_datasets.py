@@ -12,39 +12,77 @@ class DemoDatasets:
     
     @staticmethod
     def is_deployed():
-        """Enhanced deployment detection"""
-        # Check multiple indicators
-        indicators = [
-            os.getenv('STREAMLIT_SHARING'),
-            os.getenv('STREAMLIT_CLOUD'), 
-            os.getenv('DYNO'),  # Heroku
-            os.getenv('RENDER'),  # Render
-            os.getenv('RAILWAY_ENVIRONMENT'),  # Railway
-            os.getenv('VERCEL'),  # Vercel
-        ]
+        import os
+        import sys
         
-        if any(indicators):
-            return True
-            
-        # Check if running on common cloud hostnames
+        # Method 1: Check for Streamlit Cloud specific paths
         try:
-            import socket
-            hostname = socket.gethostname().lower()
-            cloud_indicators = ['streamlit', 'heroku', 'railway', 'render']
-            if any(indicator in hostname for indicator in cloud_indicators):
+            current_path = os.getcwd()
+            python_path = sys.executable
+            
+            # Streamlit Cloud characteristics
+            streamlit_indicators = [
+                '/mount/src' in current_path,
+                '/app' in current_path,
+                'streamlit' in current_path.lower(),
+                'site-packages/streamlit' in str(sys.path),
+                '/opt/conda' in python_path,  # Streamlit Cloud uses conda
+            ]
+            
+            if any(streamlit_indicators):
                 return True
-        except:
+                
+        except Exception:
             pass
         
-        # Check if file system is read-only
+        # Method 2: Check for cloud-specific Python environment
         try:
-            test_file = 'test_write.tmp'
-            with open(test_file, 'w') as f:
-                f.write('test')
-            os.remove(test_file)
-            return False  # Can write, likely local
-        except:
-            return True  # Cannot write, likely deployed 
+            # Streamlit Cloud has specific Python installation patterns
+            if '/opt/conda/bin/python' in sys.executable:
+                return True
+            if '/usr/local/bin/python' in sys.executable and os.path.exists('/app'):
+                return True
+        except Exception:
+            pass
+        
+        # Method 3: Check for lack of typical local development indicators
+        try:
+            # Local development usually has these
+            local_indicators = [
+                os.path.exists(os.path.expanduser('~/.bashrc')),
+                os.path.exists(os.path.expanduser('~/.profile')),
+                os.path.exists('/Users'),  # macOS
+                os.path.exists('/home') and os.path.exists('/usr/local'),  # Linux desktop
+            ]
+            
+            # If none of these exist, probably in a minimal container (cloud)
+            if not any(local_indicators):
+                return True
+                
+        except Exception:
+            pass
+        
+        # Method 4: Check for specific file system characteristics
+        try:
+            # Streamlit Cloud has specific directory structure
+            if os.path.exists('/app') and not os.path.exists('/home'):
+                return True
+            if os.path.exists('/opt/conda') and not os.path.exists('/usr/local/bin'):
+                return True
+        except Exception:
+            pass
+        
+        # Method 5: Check environment size 
+        try:
+            env_vars = len(os.environ)
+            # Cloud environments typically have fewer environment variables
+            if env_vars < 50:  # Arbitrary threshold
+                return True
+        except Exception:
+            pass
+        
+        # Default: assume local 
+        return False
     
     @staticmethod
     def get_available_datasets():
