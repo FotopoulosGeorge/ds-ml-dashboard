@@ -2,7 +2,19 @@
 
 **Transform CSV files into trained ML models with zero coding.** Upload data, engineer features, train algorithms, and make predictions through an intuitive web interface.
 
-## 🚀 Quick Start
+## 🌐 Try It Online - Live Demo
+
+**🚀 [Try InsightStream Now →](https://insightstream-bi.streamlit.app/)**
+
+Experience the full platform with curated demo datasets - no installation required! Perfect for:
+- 👀 **Exploring features** before downloading
+- 📚 **Learning data science** workflows  
+- 🎯 **Testing ML algorithms** safely
+- 📊 **Creating visualizations** instantly
+
+*Demo includes time series forecasting, pattern mining, AutoML, and all core features with sample datasets.*
+
+## 💻 Quick Start (Local Installation)
 
 ```bash
 git clone https://github.com/FotopoulosGeorge/insightstream-bi

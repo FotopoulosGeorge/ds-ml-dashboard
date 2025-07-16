@@ -35,7 +35,7 @@ class PatternMiner:
         st.header("🔗 **Pattern Mining & Association Rules**")
         
         if not MLXTEND_AVAILABLE:
-            st.error("❌ MLxtend unavailable in Demo Mode`")
+            st.error("❌ MLxtend Unavailable")
             st.info("💡 MLxtend provides association rule mining - great for market basket analysis!")
             return
         
