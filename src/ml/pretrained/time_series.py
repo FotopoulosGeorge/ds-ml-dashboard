@@ -33,7 +33,7 @@ class TimeSeriesForecaster:
         st.header("📈 **Time Series Forecasting**")
         
         if not PROPHET_AVAILABLE:
-            st.error("❌ Prophet not installed. Install with: `pip install prophet`")
+            st.error("❌ Prophet unavailable in Demo Mode")
             st.info("💡 Prophet is Facebook's time series forecasting tool - excellent for business data!")
             return
         

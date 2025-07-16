@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-from sklearn.datasets import load_iris, load_wine, load_diabetes, make_classification
+from sklearn.datasets import load_iris, load_wine, make_classification
 from datetime import datetime, timedelta
 import os
 
@@ -74,14 +74,6 @@ class DemoDatasets:
                 "target": "House Price",
                 "use_cases": ["Regression", "Feature Engineering", "AutoML"]
             },
-            "💊 Diabetes Progression": {
-                "description": "Medical regression - predict diabetes progression",
-                "type": "Regression",
-                "samples": 442,
-                "features": 10, 
-                "target": "Progression",
-                "use_cases": ["Regression", "Feature Selection", "Medical ML"]
-            },
             "📈 Sales Time Series": {
                 "description": "Synthetic sales data with trends and seasonality",
                 "type": "Time Series",
@@ -111,8 +103,6 @@ class DemoDatasets:
             return DemoDatasets._load_wine()
         elif dataset_name == "🏠 California Housing":
             return DemoDatasets._load_california_housing()
-        elif dataset_name == "💊 Diabetes Progression":
-            return DemoDatasets._load_diabetes()
         elif dataset_name == "📈 Sales Time Series":
             return DemoDatasets._create_time_series()
         elif dataset_name == "🛒 E-commerce Transactions":
@@ -148,14 +138,6 @@ class DemoDatasets:
         except ImportError:
             # Fallback to synthetic housing data
             return DemoDatasets._create_housing_data()
-    
-    @staticmethod
-    def _load_diabetes():
-        """Load Diabetes dataset"""
-        diabetes = load_diabetes()
-        df = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
-        df['Progression'] = diabetes.target
-        return df
     
     @staticmethod
     def _create_time_series():

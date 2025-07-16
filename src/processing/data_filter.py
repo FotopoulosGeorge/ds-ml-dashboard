@@ -316,7 +316,8 @@ class DataFilter:
                     min_value=min_val,
                     max_value=max_val,
                     key=f"manual_min_{col}",
-                    format="%.4f"
+                    format="%.4f",
+                    step=1.0
                 )
             with input_col2:
                 final_max = st.number_input(
@@ -325,8 +326,8 @@ class DataFilter:
                     min_value=min_val,
                     max_value=max_val,
                     key=f"manual_max_{col}",
-                    format="%.4f"
-                )
+                    format="%.4f",
+                    step=1.0                )
         
         else:  # Both method
             st.write("**Slider:**")
@@ -347,7 +348,8 @@ class DataFilter:
                     min_value=min_val,
                     max_value=max_val,
                     key=f"manual_min_{col}",
-                    format="%.4f"
+                    format="%.4f",
+                    step=1.0
                 )
             with input_col2:
                 final_max = st.number_input(
@@ -356,7 +358,8 @@ class DataFilter:
                     min_value=min_val,
                     max_value=max_val,
                     key=f"manual_max_{col}",
-                    format="%.4f"
+                    format="%.4f",
+                    step=1.0
                 )
         
         # Validation and filtering

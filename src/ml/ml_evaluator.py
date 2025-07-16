@@ -482,7 +482,8 @@ class MLEvaluator:
                     input_values[feature] = st.number_input(
                         f"**{feature}:**",
                         key=f"pred_input_{feature}",
-                        format="%.4f"
+                        format="%.4f",
+                        step=1.0
                     )
             
             if st.button("🔮 **Make Prediction**", key="make_single_prediction"):

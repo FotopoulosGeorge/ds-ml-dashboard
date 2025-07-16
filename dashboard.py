@@ -387,8 +387,6 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    st.info("👆 **Get Started:** Upload one or more CSV files using the sidebar")
-    
     col1, col2, col3 = st.columns(3)
     
     with col1:
