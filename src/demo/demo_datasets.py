@@ -12,37 +12,39 @@ class DemoDatasets:
     
     @staticmethod
     def is_deployed():
-        """
-        Check if app is deployed on cloud vs running locally
-        """
-        # Method 1: Check for Streamlit Cloud environment variables
-        if os.getenv('STREAMLIT_SHARING') or os.getenv('STREAMLIT_CLOUD'):
-            return True
+        """Enhanced deployment detection"""
+        # Check multiple indicators
+        indicators = [
+            os.getenv('STREAMLIT_SHARING'),
+            os.getenv('STREAMLIT_CLOUD'), 
+            os.getenv('DYNO'),  # Heroku
+            os.getenv('RENDER'),  # Render
+            os.getenv('RAILWAY_ENVIRONMENT'),  # Railway
+            os.getenv('VERCEL'),  # Vercel
+        ]
         
-        # Method 2: Check if running on common cloud platforms
-        if os.getenv('DYNO') or os.getenv('RENDER') or os.getenv('HEROKU'):
+        if any(indicators):
             return True
-        
-        # Method 3: Check hostname patterns (but not localhost)
+            
+        # Check if running on common cloud hostnames
         try:
             import socket
-            hostname = socket.gethostname()
-            if 'streamlit' in hostname.lower() and 'localhost' not in hostname.lower():
+            hostname = socket.gethostname().lower()
+            cloud_indicators = ['streamlit', 'heroku', 'railway', 'render']
+            if any(indicator in hostname for indicator in cloud_indicators):
                 return True
         except:
             pass
         
-        # Method 4: If running on localhost, it's definitely local
+        # Check if file system is read-only
         try:
-            import streamlit.web.server.server as server
-            if hasattr(server, 'Server'):
-                # Check if any server instance is running on localhost
-                return False  # Assume local if we can't determine otherwise
+            test_file = 'test_write.tmp'
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            return False  # Can write, likely local
         except:
-            pass
-        
-        # Default: assume local for localhost
-        return False  
+            return True  # Cannot write, likely deployed 
     
     @staticmethod
     def get_available_datasets():
