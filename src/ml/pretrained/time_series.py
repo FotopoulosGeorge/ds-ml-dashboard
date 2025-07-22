@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
+from src.ml.performance_decorator import time_series_performance
 
 # Prophet import with fallback
 try:
@@ -120,7 +121,7 @@ class TimeSeriesForecaster:
             
             if growth == "logistic":
                 st.info("💡 For logistic growth, set capacity limits in your data")
-    
+    @time_series_performance(dataset_param="df", config_params=["periods", "freq"])
     def _create_prophet_forecast(self, df, date_col, target_col, periods, freq):
         """
         Create Prophet forecast

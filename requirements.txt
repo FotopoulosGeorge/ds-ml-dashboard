@@ -29,7 +29,7 @@ apyori>=1.1.2            # Additional association rule mining
 networkx>=3.0            # Network analysis for pattern visualization
 imbalanced-learn>=0.10.0
 optuna>=3.0.0
-psutils
+psutil
 
 
 # Performance & Utilities

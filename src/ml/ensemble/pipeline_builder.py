@@ -13,6 +13,7 @@ from sklearn.feature_selection import SelectKBest, SelectFromModel, RFE, f_class
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, classification_report
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from src.ml.performance_decorator import ml_performance
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -383,7 +384,11 @@ class PipelineBuilder:
             'cv_folds': cv_folds if 'cv_folds' in locals() else 5,
             'n_iter': n_iter if 'n_iter' in locals() else 20
         }
-    
+    @ml_performance(
+        "ensemble", 
+        dataset_param="df", 
+        config_params=["problem_type", "validation_strategy"]
+    )
     def _build_and_execute_pipeline(self, df, target_column, feature_columns, problem_type, validation_strategy):
         """Build and execute the complete pipeline"""
         

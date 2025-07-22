@@ -19,6 +19,7 @@ from .automl import AutoMLEngine
 from .pretrained.pattern_mining import PatternMiner
 from src.demo.demo_datasets import DemoDatasets
 
+
 class MLTrainer:
     """
     Main ML training interface - handles UI and coordinates ML workflow

@@ -19,6 +19,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, classification_report
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
+from .performance_decorator import automl_performance
 
 class AutoMLEngine:
     """
@@ -268,7 +269,7 @@ class AutoMLEngine:
             ('minmax_scaler', MinMaxScaler()),
             ('robust_scaler', RobustScaler())
         ]
-    
+    @automl_performance(dataset_param="X", config_params=["search_strategy", "max_time_minutes"]) 
     def _run_automl_experiment(self, X, y, problem_type, search_strategy, max_time_minutes,
                              include_preprocessing, include_feature_selection, cv_folds, test_size, random_state):
         """
@@ -406,6 +407,7 @@ class AutoMLEngine:
         }
         
         return experiment_summary
+      
     
     def _display_automl_results(self, experiment_summary, target_col, features):
         """
