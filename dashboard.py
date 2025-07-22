@@ -27,6 +27,17 @@ st.set_page_config(
 # Initialize session state
 if 'datasets' not in st.session_state:
     st.session_state.datasets = {}
+if 'model_chains' not in st.session_state:
+    st.session_state.model_chains = {}
+
+if 'ensemble_models' not in st.session_state:
+    st.session_state.ensemble_models = {}
+
+if 'stacking_ensembles' not in st.session_state:
+    st.session_state.stacking_ensembles = {}
+
+if 'ml_pipelines' not in st.session_state:
+    st.session_state.ml_pipelines = {}
 
 # Header
 st.title("📊 InsightStream")

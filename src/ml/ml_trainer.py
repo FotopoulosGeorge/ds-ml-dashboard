@@ -90,6 +90,7 @@ class MLTrainer:
                     "🎯 Supervised Learning (Classification/Regression)",
                     "🔍 Unsupervised Learning (Clustering)",
                     "🤖 AutoML (Automated)",
+                    "🔗 Ensemble Methods",
                     "📈 Time Series Forecasting", 
                     "🚨 Anomaly Detection",
                     "🔗 Pattern Mining"
@@ -134,6 +135,8 @@ class MLTrainer:
             elif ml_task == "🔗 Pattern Mining":
                 pattern_miner = PatternMiner()
                 pattern_miner.render_pattern_mining_tab(current_data)
+            elif ml_task == "🔗 Ensemble Methods":
+                self._ensemble_workflow(current_data)
                 
         except Exception as e:
             st.error(f"❌ ML Error: {str(e)}")
@@ -721,3 +724,30 @@ class MLTrainer:
             
             except Exception as e:
                 st.error(f"❌ Error accessing saved models: {str(e)}")
+
+    def _ensemble_workflow(self, df):
+        """Handle ensemble methods workflow"""
+        st.subheader("🔗 Ensemble Methods")
+        
+        # Import ensemble classes
+        from .ensemble import ModelChainer, EnsembleMethods, StackingEnsemble, PipelineBuilder
+        
+        # Ensemble technique selection
+        ensemble_technique = st.selectbox(
+            "**Select Ensemble Technique:**",
+            ["Sequential Chaining", "Ensemble Methods", "Stacking", "Pipeline Builder"],
+            key="ensemble_technique"
+        )
+        
+        if ensemble_technique == "Sequential Chaining":
+            chainer = ModelChainer()
+            chainer.render_chaining_tab(df)
+        elif ensemble_technique == "Ensemble Methods":
+            ensemble_methods = EnsembleMethods()
+            ensemble_methods.render_ensemble_tab(df)
+        elif ensemble_technique == "Stacking":
+            stacking = StackingEnsemble()
+            stacking.render_stacking_tab(df)
+        elif ensemble_technique == "Pipeline Builder":
+            pipeline_builder = PipelineBuilder()
+            pipeline_builder.render_pipeline_tab(df)

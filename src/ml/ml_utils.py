@@ -236,13 +236,34 @@ class MLUtils:
         models_dir = os.path.join('src', 'ml', 'models')
         os.makedirs(models_dir, exist_ok=True)
         from datetime import datetime
+        
         # Generate filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{model_name}_{timestamp}.joblib"
         filepath = os.path.join(models_dir, filename)
+        
+        # Prepare base data to save
+        save_data = {
+            'model': model,
+            'model_info': model_info,
+            'saved_at': datetime.now().isoformat(),
+            'sklearn_version': None  # Could add sklearn version check
+        }
+        
+        # Handle ensemble-specific metadata (applies to both demo and local modes)
+        if model_info and ('ensemble_info' in model_info or 'stacking_info' in model_info or 'pipeline_info' in model_info):
+            save_data['ensemble_metadata'] = {
+                'is_ensemble': True,
+                'ensemble_type': model_info.get('ensemble_info', {}).get('method', 
+                            model_info.get('stacking_info', {}).get('method',
+                            model_info.get('pipeline_info', {}).get('method', 'Unknown'))),
+                'base_models': model_info.get('base_models', []),
+                'ensemble_config': model_info.get('config', {})
+            }
+        
         # Check if in demo mode
         if DemoDatasets.is_deployed():
-        # Demo mode: Show info but don't actually save
+            # Demo mode: Show info but don't actually save
             st.warning("🌐 **Demo Mode**: Models cannot be permanently saved on cloud deployment")
             st.info("""
             💡 **In Demo Mode:**
@@ -251,11 +272,10 @@ class MLUtils:
             - Download model info as backup
             - For permanent saving, run app locally
             """)
-        
-        # Provide model info as downloadable content instead
+            
+            # Provide model info as downloadable content
             if model_info:
                 import json
-                from datetime import datetime
                 
                 # Create model summary for download
                 model_summary = {
@@ -265,6 +285,7 @@ class MLUtils:
                     'problem_type': model_info.get('problem_type', 'Unknown'),
                     'trained_on': 'Demo Dataset',
                     'created_at': datetime.now().isoformat(),
+                    'ensemble_metadata': save_data.get('ensemble_metadata', {}),  # Include ensemble info
                     'note': 'This model was trained on demo data. To save actual model files, run the app locally.'
                 }
                 
@@ -280,17 +301,11 @@ class MLUtils:
             
             # Return a fake filepath for consistency
             return f"demo_mode_{model_name}.joblib"
+        
         else:
-            # Prepare data to save
-            save_data = {
-                'model': model,
-                'model_info': model_info,
-                'saved_at': datetime.now().isoformat(),
-                'sklearn_version': None  # Could add sklearn version check
-            }
-            
+            # Local mode: Actually save to disk
             try:
-                # Save model
+                # Save model with ensemble metadata included
                 joblib.dump(save_data, filepath)
                 return filepath
             except Exception as e:
@@ -603,3 +618,13 @@ class MLUtils:
             'cons': [],
             'best_for': 'Various use cases'
         })
+    
+    @staticmethod
+    def get_ensemble_summary(ensemble_info):
+        """Get summary of ensemble configuration"""
+        return {
+            'type': ensemble_info.get('method', 'Unknown'),
+            'base_models': len(ensemble_info.get('base_models', [])),
+            'performance': ensemble_info.get('performance', {}),
+            'created': ensemble_info.get('created_at', 'Unknown')
+        }

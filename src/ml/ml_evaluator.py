@@ -33,6 +33,8 @@ class MLEvaluator:
             self._evaluate_regression(model_info)
         elif problem_type == 'clustering':
             self._evaluate_clustering(model_info)
+        elif problem_type == 'ensemble':
+            self._evaluate_ensemble(model_info)
     
     def _evaluate_classification(self, model_info):
         """Comprehensive classification evaluation"""
@@ -153,6 +155,28 @@ class MLEvaluator:
         elif hasattr(model, 'coef_'):
             st.subheader("🎯 Feature Coefficients")
             self._plot_feature_coefficients(model, model_info['features'])
+
+    def _evaluate_ensemble(self, model_info):
+        """Evaluate ensemble models"""
+        st.subheader("🔗 Ensemble Results")
+        
+        ensemble_type = model_info.get('ensemble_info', {}).get('method', 'Unknown')
+        st.info(f"**Ensemble Type:** {ensemble_type}")
+        
+        # Check if it's a pipeline, chain, or standard ensemble
+        if 'pipeline_info' in model_info:
+            self._evaluate_pipeline_ensemble(model_info)
+        elif 'stacking_info' in model_info:
+            self._evaluate_stacking_ensemble(model_info)
+        elif 'chain_result' in model_info:
+            self._evaluate_chain_ensemble(model_info)
+        else:
+            # Standard ensemble evaluation
+            base_problem_type = model_info.get('base_problem_type', 'classification')
+            if base_problem_type == 'classification':
+                self._evaluate_classification(model_info)
+            else:
+                self._evaluate_regression(model_info)
     
     def _plot_confusion_matrix(self, y_true, y_pred):
         """Plot confusion matrix using plotly"""
