@@ -4,7 +4,7 @@
 
 ## 🌐 Try It Online - Live Demo
 
-**🚀 [Try InsightStream Now →](ds-ml-dashboard.streamlit.app/)**
+**🚀 [Try Platform Now →](ds-ml-dashboard.streamlit.app/)**
 
 Experience the full platform with curated demo datasets - no installation required! Perfect for:
 - 👀 **Exploring features** before downloading
