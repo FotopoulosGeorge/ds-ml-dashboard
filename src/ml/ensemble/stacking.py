@@ -13,6 +13,7 @@ from sklearn.model_selection import cross_val_predict, StratifiedKFold, KFold
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, classification_report
 from sklearn.base import clone
 import warnings
+from src.ml.performance_decorator import ml_performance
 warnings.filterwarnings('ignore')
 
 class StackingEnsemble:
@@ -226,6 +227,12 @@ class StackingEnsemble:
                 st.error(f"❌ Stacking ensemble creation failed: {str(e)}")
                 st.info("💡 Check model compatibility and ensure sufficient data")
     
+
+    @ml_performance(
+        "ensemble", 
+        dataset_param="df", 
+        config_params=["selected_base_models", "meta_learner_type", "cv_folds", "stack_method"]
+    )
     def _create_stacking_ensemble(self, selected_base_models, target_models, meta_learner_type, 
                                 problem_type, cv_folds, stack_method, df):
         """Create the stacking ensemble"""

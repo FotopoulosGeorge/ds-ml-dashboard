@@ -409,7 +409,7 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
     
     # Get initial memory usage
     initial_memory = tracker.get_current_memory_usage() if track_memory else 0
-    
+    start_time = time.time()
     # Progress tracking for long operations
     if estimate["estimated_time"] > 120:  # 2+ minutes
         progress_bar = st.progress(0)

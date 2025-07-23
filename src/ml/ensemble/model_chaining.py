@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, classification_report
 import warnings
+from src.ml.performance_decorator import ml_performance
 warnings.filterwarnings('ignore')
 
 class ModelChainer:
@@ -267,6 +268,12 @@ class ModelChainer:
         
         st.plotly_chart(fig, use_container_width=True)
     
+
+    @ml_performance(
+        "ensemble", 
+        dataset_param="df", 
+        config_params=["chain_models", "test_data_source"]
+    )
     def _execute_model_chain(self, chain_models, available_models, df, test_data_source):
         """
         Execute the complete model chain

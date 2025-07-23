@@ -10,6 +10,7 @@ from sklearn.ensemble import VotingClassifier, VotingRegressor, BaggingClassifie
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, classification_report
 from sklearn.base import clone
 import warnings
+from src.ml.performance_decorator import ml_performance
 warnings.filterwarnings('ignore')
 
 class EnsembleMethods:
@@ -434,7 +435,11 @@ class EnsembleMethods:
                 for k, v in weights.items()
             ])
             st.dataframe(weight_df, use_container_width=True)
-    
+    @ml_performance(
+        "ensemble", 
+        dataset_param="df", 
+        config_params=["ensemble_method", "selected_models", "evaluation_method"]
+    )
     def _create_ensemble(self, selected_models, target_models, ensemble_method, problem_type, evaluation_method, df):
         """Create the actual ensemble model"""
         
