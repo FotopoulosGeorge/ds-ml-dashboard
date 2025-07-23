@@ -224,8 +224,8 @@ if st.session_state.datasets:
                 del st.session_state.datasets[name]
                 st.rerun()
 
-        from src.ml.performance_utils import SessionStateBackup
-        SessionStateBackup.show_backup_options()
+        # from src.ml.performance_utils import SessionStateBackup
+        # SessionStateBackup.show_backup_options()
         
 
 # Main content area

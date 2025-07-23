@@ -119,77 +119,10 @@ class EnsembleMethods:
                     ["Cross-Validation", "Hold-out Test", "Both"],
                     key="eval_method"
                 )
-            try:
-                from ..performance_utils import PerformanceEstimator, ProgressTracker
-                # Show performance warning
-                dataset_size = (len(df), len(df.columns))
-                config = {
-                    'n_models': len(selected_models),
-                    'n_estimators': st.session_state.get('bagging_n_estimators', 10),
-                    'cv_folds': 5
-                }
-                
-                estimate = PerformanceEstimator.display_performance_warning(
-                    ensemble_method,  
-                    dataset_size, 
-                    config
-                )
-                
-                # Show refresh warning for long operations
-                if estimate['max_time'] > 300:  # > 5 minutes
-                    PerformanceEstimator.show_refresh_warning()
-                
-                # Show button with conditional text based on estimated time
-                if estimate['max_time'] > 600:  # > 10 minutes
-                    button_text = f"⚠️ **Create Ensemble (~{estimate['max_time']//60}+ min)**"
-                    button_help = f"This operation may take {estimate['max_time']//60}+ minutes"
-                elif estimate['max_time'] > 300:  # > 5 minutes
-                    button_text = f"🎯 **Create Ensemble (~{estimate['max_time']//60} min)**"
-                    button_help = f"Estimated time: {estimate['max_time']//60} minutes"
-                else:
-                    button_text = "🎯 **Create Ensemble**"
-                    button_help = f"Estimated time: {estimate['max_time']}s"
-                    
-            except ImportError:
-                # Fallback if performance_utils not available
-                estimate = {'max_time': 120}  # Default estimate
-                button_text = "🎯 **Create Ensemble**"
-                button_help = "Create the ensemble model"
+            button_text = "🎯 **Create Ensemble**"
+            button_help = "Create the ensemble model"
 
             if st.button(button_text, type="primary", key="create_ensemble", help=button_help):
-        
-                # Additional confirmation for very long operations
-                if estimate['max_time'] > 600:  # > 10 minutes
-                    st.warning(f"⚠️ This operation may take **{estimate['max_time']//60}+ minutes**")
-                    confirm = st.checkbox(
-                        "✅ **I understand and want to proceed**",
-                        key="long_operation_confirm"
-                    )
-                    if not confirm:
-                        st.error("❌ Operation cancelled. Check the confirmation box to proceed.")
-                        st.stop()
-    
-                try:
-                    # CREATE PROGRESS TRACKER
-                    progress = ProgressTracker(
-                        total_steps=len(selected_models) + 2,  # Models + fitting + evaluation
-                        operation_name="Ensemble Creation"
-                    )
-                    
-                    with st.spinner('Creating ensemble...'):
-                        progress.update("Preparing base models")
-                        
-                        ensemble_result = self._create_ensemble(
-                            selected_models, target_models, ensemble_method, 
-                            problem_type, evaluation_method, df, progress  # Pass progress tracker
-                        )
-                    
-                    progress.finish("🎉 Ensemble created successfully!")
-
-                except Exception as e:
-                    st.error(f"❌ Ensemble creation failed: {str(e)}")
-                    st.info("💡 Check model compatibility and data requirements")
-                    return
                 try:
                     with st.spinner('Creating ensemble...'):
                         ensemble_result = self._create_ensemble(
@@ -198,11 +131,7 @@ class EnsembleMethods:
                         )
 
                         if ensemble_result:
-                            progress.update("Displaying results")
-                            
                             self._display_ensemble_results(ensemble_result, ensemble_name)
-                            
-                            progress.update("Saving ensemble")
                             
                             # Store ensemble
                             if 'ensemble_models' not in st.session_state:
@@ -217,12 +146,11 @@ class EnsembleMethods:
                                 'created_at': datetime.now()
                             }
                             
-                    progress.finish("🎉 Ensemble created and saved!")
                     st.success(f"✅ Ensemble '{ensemble_name}' created successfully!")
                             
                 except Exception as e:
                     st.error(f"❌ Ensemble creation failed: {str(e)}")
-                    st.info("💡 Check model compatibility and data requirements")                    
+                    st.info("💡 Check model compatibility and data requirements")                   
     
     def _configure_voting_ensemble(self, selected_models, target_models, problem_type):
         """Configure voting ensemble parameters"""
