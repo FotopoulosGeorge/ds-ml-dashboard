@@ -40,7 +40,7 @@ if 'ml_pipelines' not in st.session_state:
     st.session_state.ml_pipelines = {}
 
 # Header
-st.title("📊 Data Science & Machine Learning Dashboard")
+st.title("📊 Data Science & ML Dashboard")
 st.markdown("• Analyze, Visualize, Train, Predict")
 
 # Sidebar for file upload and controls
@@ -398,7 +398,7 @@ else:
     st.markdown("""
     <div style="text-align: center; padding: 50px 0;">
         <h2>🚀 Data Science & Machine Learning Dashboard</h2>
-        <p style="font-size: 18px; color: #666;">Your Modular DS & ML Intelligence Dashboard</p>
+        <p style="font-size: 18px; color: #666;"> Modular DS & ML Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
     
