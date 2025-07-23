@@ -17,7 +17,7 @@ from src.demo.demo_datasets import DemoDatasets
 
 # Page configuration
 st.set_page_config(
-    page_title="InsightStream - Modular BI Dashboard",
+    page_title="Data Science & Machine Learning Dashboard",
     page_icon="📊",
     layout="wide"
 )
@@ -40,8 +40,8 @@ if 'ml_pipelines' not in st.session_state:
     st.session_state.ml_pipelines = {}
 
 # Header
-st.title("📊 InsightStream")
-st.markdown("**Business Intelligence Dashboard** • Analyze, Visualize, Train, Predict")
+st.title("📊 Data Science & Machine Learning Dashboard")
+st.markdown("• Analyze, Visualize, Train, Predict")
 
 # Sidebar for file upload and controls
 
@@ -397,8 +397,8 @@ else:
     # Welcome screen when no data is uploaded
     st.markdown("""
     <div style="text-align: center; padding: 50px 0;">
-        <h2>🚀 Welcome to InsightStream</h2>
-        <p style="font-size: 18px; color: #666;">Your Modular Business Intelligence Dashboard</p>
+        <h2>🚀 Data Science & Machine Learning Dashboard</h2>
+        <p style="font-size: 18px; color: #666;">Your Modular DS & ML Intelligence Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -451,7 +451,7 @@ else:
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: #666; font-size: 14px;'>"
-    "Built with ❤️ using Streamlit • <strong>InsightStream v3.1 - Enhanced</strong>"
+    "Built with ❤️ using Streamlit • <strong>Data Science & Machine Learning Dashboard v3.1 - Enhanced</strong>"
     "</div>", 
     unsafe_allow_html=True
 )
