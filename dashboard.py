@@ -395,12 +395,6 @@ if st.session_state.datasets:
 
 else:
     # Welcome screen when no data is uploaded
-    st.markdown("""
-    <div style="text-align: center; padding: 50px 0;">
-        <h2>🚀 Data Science & Machine Learning Dashboard</h2>
-        <p style="font-size: 18px; color: #666;"> Modular DS & ML Dashboard</p>
-    </div>
-    """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
