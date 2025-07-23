@@ -1,10 +1,10 @@
-# 📊 InsightStream - Complete Data Science Platform
+# 📊 Data Science & Machine Learning Dashboard - Complete Data Science Platform
 
 **Transform CSV files into trained ML models with zero coding.** Upload data, engineer features, train algorithms, and make predictions through an intuitive web interface.
 
 ## 🌐 Try It Online - Live Demo
 
-**🚀 [Try InsightStream Now →](https://insightstream-bi.streamlit.app/)**
+**🚀 [Try InsightStream Now →](ds-ml-dashboard.streamlit.app/)**
 
 Experience the full platform with curated demo datasets - no installation required! Perfect for:
 - 👀 **Exploring features** before downloading
@@ -17,8 +17,8 @@ Experience the full platform with curated demo datasets - no installation requir
 ## 💻 Quick Start (Local Installation)
 
 ```bash
-git clone https://github.com/FotopoulosGeorge/insightstream-bi
-cd insightstream-bi
+git clone https://github.com/FotopoulosGeorge/ds-ml-dashboard
+cd ds-ml-dashboard
 pip install -r requirements.txt
 streamlit run dashboard.py
 ```
