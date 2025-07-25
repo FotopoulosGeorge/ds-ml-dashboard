@@ -183,7 +183,13 @@ def render_data_input_section():
                         st.session_state.datasets[file_name] = loaded_df
                     
                     st.session_state.datasets[file_name] = load_data(uploaded_file, file_extension)
-        
+        if hasattr(st.session_state, 'cancel_operation'):
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("🔄 **Operation Status**")
+            if st.sidebar.button("🛑 **Force Cancel All**"):
+                if hasattr(st.session_state, 'cancel_operation'):
+                    st.session_state.cancel_operation.set()
+                st.sidebar.success("Cancellation signal sent")
         # Show local mode benefits
         with st.sidebar.expander("🔒 Local Mode Benefits"):
             st.markdown("""

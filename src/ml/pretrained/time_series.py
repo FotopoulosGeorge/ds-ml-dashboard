@@ -122,10 +122,13 @@ class TimeSeriesForecaster:
             if growth == "logistic":
                 st.info("💡 For logistic growth, set capacity limits in your data")
     @time_series_performance(dataset_param="df", config_params=["periods", "freq"])
-    def _create_prophet_forecast(self, df, date_col, target_col, periods, freq):
+    def _create_prophet_forecast(self, df, date_col, target_col, periods, freq, cancel_event=None):
         """
         Create Prophet forecast
         """
+        if cancel_event and cancel_event.is_set():
+            st.info("🛑 Time series forecasting cancelled")
+            return None
         # Prepare data for Prophet
         ts_data = df[[date_col, target_col]].copy()
         ts_data = ts_data.dropna()
@@ -136,7 +139,9 @@ class TimeSeriesForecaster:
         if len(ts_data) < 10:
             st.error("❌ Need at least 10 data points for forecasting")
             return None
-        
+        if cancel_event and cancel_event.is_set():
+            st.info("🛑 Time series forecasting cancelled")
+            return None
         # Initialize Prophet model
         model_params = {
             'yearly_seasonality': st.session_state.get('yearly_season', True),
@@ -149,6 +154,9 @@ class TimeSeriesForecaster:
         
         # Fit model
         model.fit(ts_data)
+        if cancel_event and cancel_event.is_set():
+            st.info("🛑 Time series forecasting cancelled after model fitting")
+            return None
         
         # Create future dataframe
         future = model.make_future_dataframe(periods=periods, freq=freq)

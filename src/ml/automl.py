@@ -271,7 +271,7 @@ class AutoMLEngine:
         ]
     @automl_performance(dataset_param="X", config_params=["search_strategy", "max_time_minutes"]) 
     def _run_automl_experiment(self, X, y, problem_type, search_strategy, max_time_minutes,
-                             include_preprocessing, include_feature_selection, cv_folds, test_size, random_state):
+                             include_preprocessing, include_feature_selection, cv_folds, test_size, random_state, cancel_event=None):
         """
         Run the complete AutoML experiment
         """
@@ -298,7 +298,9 @@ class AutoMLEngine:
         for algo_name, algorithm in algorithms.items():
             for prep_name, preprocessor in preprocessing_options:
                 current_combination += 1
-                
+                if cancel_event and cancel_event.is_set():
+                    st.info(f"🛑 AutoML cancelled after {current_combination-1} combinations")
+                    break
                 # Check time limit
                 if time.time() - start_time > max_time_seconds:
                     st.warning(f"⏰ Time limit reached. Stopping after {current_combination-1} combinations.")
@@ -384,7 +386,7 @@ class AutoMLEngine:
                 progress_bar.progress(current_combination / total_combinations)
                 
                 # Break outer loop if time limit reached
-                if time.time() - start_time > max_time_seconds:
+                if (cancel_event and cancel_event.is_set()) or (time.time() - start_time > max_time_seconds):
                     break
         
         progress_bar.progress(1.0)

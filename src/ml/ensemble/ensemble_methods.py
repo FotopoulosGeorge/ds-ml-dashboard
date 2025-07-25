@@ -368,7 +368,7 @@ class EnsembleMethods:
         dataset_param="df", 
         config_params=["ensemble_method", "selected_models", "evaluation_method"]
     )
-    def _create_ensemble(self, selected_models, target_models, ensemble_method, problem_type, evaluation_method, df):
+    def _create_ensemble(self, selected_models, target_models, ensemble_method, problem_type, evaluation_method, df, cancel_event=None):
         """Create the actual ensemble model"""
         
         # Prepare base models
@@ -383,8 +383,14 @@ class EnsembleMethods:
         
         # Create ensemble based on method
         if ensemble_method == "Voting Ensemble":
+            if cancel_event and cancel_event.is_set():
+                st.info("🛑 Ensemble creation cancelled")
+                return None
             ensemble_model = self._create_voting_ensemble(base_models, problem_type)
         elif ensemble_method == "Bagging Ensemble":
+            if cancel_event and cancel_event.is_set():
+                st.info("🛑 Ensemble creation cancelled")
+                return None
             ensemble_model = self._create_bagging_ensemble(base_models, problem_type)
         elif ensemble_method == "Custom Weighted Ensemble":
             ensemble_model = self._create_weighted_ensemble(base_models, problem_type)

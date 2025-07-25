@@ -2,6 +2,7 @@ from .ml_trainer import MLTrainer
 from .ml_evaluator import MLEvaluator
 from .ml_utils import MLUtils
 from .automl import AutoMLEngine
+from .ensemble import ModelChainer, EnsembleMethods, StackingEnsemble, PipelineBuilder
 
 __version__ = "0.0.1"
 __author__ = "George Fotopoulos"
@@ -10,7 +11,11 @@ __all__ = [
     'MLTrainer',
     'MLEvaluator', 
     'MLUtils',
-    'AutoMLEngine'
+    'AutoMLEngine',
+    'ModelChainer',        
+    'EnsembleMethods',      
+    'StackingEnsemble',    
+    'PipelineBuilder'
 ]
 
 # Module metadata
@@ -40,6 +45,13 @@ ML_ALGORITHMS = {
         'Hyperparameter Optimization',
         'Auto Feature Selection',
         'Auto Preprocessing'
+    ],
+    'ensemble': [
+        'Sequential Model Chaining',
+        'Voting Ensemble',
+        'Bagging Ensemble', 
+        'Stacking Ensemble',
+        'Pipeline Chaining'
     ]
 }
 

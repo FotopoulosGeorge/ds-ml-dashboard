@@ -405,6 +405,9 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
                                    track_memory: bool, tracker: MLPerformanceTracker):
     """Execute function with enhanced progress and memory tracking"""
     
+    cancel_event = threading.Event()
+    st.session_state.cancel_operation = cancel_event
+
     operation_name = operation_type.replace("_", " ").title()
     
     # Get initial memory usage
@@ -415,13 +418,15 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
         progress_bar = st.progress(0)
         status_text = st.empty()
         memory_text = st.empty()
-        
+        cancel_container = st.empty()
         # Use threading for progress monitoring
         result_queue = queue.Queue()
         exception_queue = queue.Queue()
         
         def worker():
             try:
+                if 'cancel_event' in inspect.signature(func).parameters:
+                    kwargs['cancel_event'] = cancel_event
                 result = func(*args, **kwargs)
                 result_queue.put(result)
             except Exception as e:
@@ -435,12 +440,24 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
             thread.start()
             
             while thread.is_alive():
+                if cancel_event.is_set():
+                    status_text.text('🛑 Cancelling operation...')
+                    # Give thread time to cleanup
+                    thread.join(timeout=5)
+                    if thread.is_alive():
+                        st.warning("⚠️ Operation may still be running in background")
+                    return None
+
                 elapsed = time.time() - start_time
                 progress = min(elapsed / estimated_duration, 0.95)  # Cap at 95%
                 
                 progress_bar.progress(progress)
                 status_text.text(f'⏳ {operation_name} running... ({elapsed:.0f}s elapsed)')
                 
+                with cancel_container.container():
+                    if st.button("🛑 Cancel Operation", key=f"cancel_{operation_type}_{int(start_time)}"):
+                        cancel_event.set()
+
                 if track_memory:
                     current_memory = tracker.get_current_memory_usage()
                     memory_used = current_memory - initial_memory
@@ -450,15 +467,19 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
             
             thread.join()
             progress_bar.progress(1.0)
-            
+            cancel_container.empty()
             if not result_queue.empty():
                 return result_queue.get()
             elif not exception_queue.empty():
                 raise exception_queue.get()
         
         result = monitor_progress()
-    
+        if result is None:
+            st.warning("🛑 Operation was cancelled by user")
+            return None
     else:
+        if 'cancel_event' in inspect.signature(func).parameters:
+            kwargs['cancel_event'] = cancel_event
         # Regular execution with spinner
         with st.spinner(f'Executing {operation_name}...'):
             start_time = time.time()
@@ -486,7 +507,8 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
     
     # Store performance data for learning
     _store_performance_data(operation_type, estimate, execution_time, memory_used)
-    
+    if hasattr(st.session_state, 'cancel_operation'):
+        del st.session_state.cancel_operation
     return result
 
 

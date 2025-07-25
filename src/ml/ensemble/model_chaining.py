@@ -274,7 +274,7 @@ class ModelChainer:
         dataset_param="df", 
         config_params=["chain_models", "test_data_source"]
     )
-    def _execute_model_chain(self, chain_models, available_models, df, test_data_source):
+    def _execute_model_chain(self, chain_models, available_models, df, test_data_source, cancel_event=None):
         """
         Execute the complete model chain
         """
@@ -302,6 +302,10 @@ class ModelChainer:
         current_data = test_data.copy()
         
         for i, model_name in enumerate(chain_models):
+            if cancel_event and cancel_event.is_set():
+                st.info(f"🛑 Model chain cancelled at step {i+1}")
+                chain_results['cancelled_at_step'] = i + 1
+                return chain_results
             model_info = available_models[model_name]
             model = model_info['model']
             

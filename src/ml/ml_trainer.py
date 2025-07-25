@@ -250,7 +250,9 @@ class MLTrainer:
                         'training_data': (X_train, y_train),
                         'model_id': model_id
                     }
-                    
+                    if model_info is None:  # This means operation was cancelled
+                        st.info("🛑 Model training was cancelled")
+                        return
                     st.session_state.trained_models[model_id] = model_info
                     if save_model:
                         try:
