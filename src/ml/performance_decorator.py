@@ -438,7 +438,22 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
             
             thread = threading.Thread(target=worker)
             thread.start()
+
+            cancel_clicked = False
             
+            col1, col2 = st.columns([3, 1])
+
+            with col1:
+                progress_placeholder = st.empty()
+                status_placeholder = st.empty()
+                if track_memory:
+                    memory_placeholder = st.empty()
+
+            with col2:
+                if st.button("🛑 Cancel", key=f"cancel_{operation_type}_{int(start_time)}_{hash(str(args)[:50])}"):
+                    cancel_event.set()
+                    cancel_clicked = True
+
             while thread.is_alive():
                 if cancel_event.is_set():
                     status_text.text('🛑 Cancelling operation...')
@@ -450,13 +465,12 @@ def _execute_with_enhanced_tracking(func: Callable, args: tuple, kwargs: dict,
 
                 elapsed = time.time() - start_time
                 progress = min(elapsed / estimated_duration, 0.95)  # Cap at 95%
-                
-                progress_bar.progress(progress)
-                status_text.text(f'⏳ {operation_name} running... ({elapsed:.0f}s elapsed)')
-                
-                with cancel_container.container():
-                    if st.button("🛑 Cancel Operation", key=f"cancel_{operation_type}_{int(start_time)}"):
-                        cancel_event.set()
+
+                with progress_placeholder:
+                    st.progress(progress)
+        
+                with status_placeholder:
+                    st.text(f'⏳ {operation_name} running... ({elapsed:.0f}s elapsed)')
 
                 if track_memory:
                     current_memory = tracker.get_current_memory_usage()
@@ -542,7 +556,7 @@ def _should_show_performance_ui() -> bool:
         return True
 
 
-# Convenience decorators for your specific ML operations
+# Convenience decorators for specific ML operations
 def supervised_learning_performance(dataset_param="df", config_params=None):
     """Decorator for supervised learning operations"""
     return ml_performance(

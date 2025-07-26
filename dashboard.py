@@ -189,7 +189,17 @@ def render_data_input_section():
             if st.sidebar.button("🛑 **Force Cancel All**"):
                 if hasattr(st.session_state, 'cancel_operation'):
                     st.session_state.cancel_operation.set()
-                st.sidebar.success("Cancellation signal sent")
+                if hasattr(st.session_state, 'cancel_operation'):
+                    del st.session_state.cancel_operation
+        
+                keys_to_remove = []
+                for key in st.session_state.keys():
+                    if key.startswith('cancel_state_'):  # From alternative implementation
+                        keys_to_remove.append(key)
+                
+                for key in keys_to_remove:
+                    del st.session_state[key]
+                st.sidebar.success("✅ All operations cancelled and cleaned up")
         # Show local mode benefits
         with st.sidebar.expander("🔒 Local Mode Benefits"):
             st.markdown("""
