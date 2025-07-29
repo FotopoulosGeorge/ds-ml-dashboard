@@ -720,7 +720,8 @@ class FeatureEngineer:
         
         if encoding_type == "One-Hot Encoding":
             # Create dummy variables
-            dummies = pd.get_dummies(data, prefix=column, dummy_na=True)
+            has_missing = data.isnull().any()
+            dummies = pd.get_dummies(data, prefix=column, dummy_na=has_missing)
             for col in dummies.columns:
                 self.df[col] = dummies[col]
                 created_features.append(col)
@@ -730,9 +731,12 @@ class FeatureEngineer:
         elif encoding_type == "Label Encoding":
             feature_name = f"{column}_label_encoded"
             # Simple integer encoding
-            unique_vals = data.unique()
+            unique_vals = data.dropna().unique() 
             mapping = {val: idx for idx, val in enumerate(unique_vals)}
-            self.df[feature_name] = data.map(mapping)
+            encoded_series = data.map(mapping)
+            if data.isnull().any():
+                encoded_series = encoded_series.fillna(-1)
+            self.df[feature_name] = encoded_series.astype('int64')
             created_features.append(feature_name)
             if feature_name not in self.new_features:
                 self.new_features.append(feature_name)
