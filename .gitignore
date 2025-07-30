@@ -111,3 +111,7 @@ insightstream-bi/
 temp/
 tmp/
 test_feature_engineering.py
+automl_test_suite.py
+test_cancelation.py
+test_memory_monitoring.py
+automl_stress_test.py
